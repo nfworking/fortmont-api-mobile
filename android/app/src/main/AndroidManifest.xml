@@ -25,6 +25,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="exp+my-expo-app"/>
+        <data android:scheme="exp+fortmont-api-mobile"/>
       </intent-filter>
     </activity>
   </application>
