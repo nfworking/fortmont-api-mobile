@@ -22,7 +22,7 @@ export function RegistryPage() {
       setError('');
 
       try {
-        const response = await fetch('http://172.20.0.100:3000/api/registry');
+        const response = await fetch('https://web.fortmont.me/api/registry');
         const data = (await response.json()) as Dashboard[] | { data?: Dashboard[] };
 
         if (!response.ok) {
