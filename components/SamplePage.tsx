@@ -11,7 +11,11 @@ import Animated, {
 import { Database, LayoutDashboard, LogOut, Menu, ServerCog, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AuthResponse } from './LoginScreen';
+import { RealtimeDashboard } from './RealtimeDashboard';
 import { RegistryPage } from './RegistryPage';
+
+
+
 
 type SamplePageProps = {
   auth: AuthResponse;
@@ -20,7 +24,7 @@ type SamplePageProps = {
 
 type SectionKey = 'dashboard' | 'registry' | 'lxc';
 
-function cn(...values: Array<string | false | null | undefined>) {
+function cn(...values: (string | false | null | undefined)[]) {
   return values.filter(Boolean).join(' ');
 }
 
@@ -126,14 +130,8 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
       );
     }
 
-    return (
-      <View className="flex-1 rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-6">
-        <Text className="text-sm uppercase tracking-[0.3em] text-zinc-500">Dashboard</Text>
-        <Text className="mt-2 text-3xl font-bold text-white">Welcome back, {auth.user.displayName}</Text>
-        <Text className="mt-3 text-zinc-400">You are signed in as {auth.user.username}.</Text>
-      </View>
-    );
-  }, [auth.user.displayName, auth.user.username, section]);
+    return <RealtimeDashboard />;
+  }, [section]);
 
   return (
     <View className="flex-1 bg-black">
