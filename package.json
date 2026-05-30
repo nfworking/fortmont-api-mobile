@@ -1,9 +1,9 @@
 {
-  "name": "my-expo-app",
+  "name": "fortmont-api-mobile",
   "version": "1.0.0",
   "scripts": {
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "start": "expo start",
     "prebuild": "expo prebuild",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
@@ -12,12 +12,17 @@
   },
   "dependencies": {
     "expo": "^54.0.0",
+    "expo-dev-client": "~6.0.21",
+    "expo-notifications": "~0.32.17",
+    "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
+    "lucide-react-native": "^1.17.0",
     "nativewind": "latest",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
+    "react-native-svg": "15.12.1",
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
@@ -27,8 +32,8 @@
     "eslint-config-expo": "~10.0.0",
     "eslint-config-prettier": "^10.1.2",
     "prettier": "^3.2.5",
-    "tailwindcss": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.5.11",
+    "tailwindcss": "^3.4.0",
     "typescript": "~5.9.2"
   },
   "main": "node_modules/expo/AppEntry.js",

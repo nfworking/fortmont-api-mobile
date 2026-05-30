@@ -14,7 +14,12 @@ web-build/
 
 
 ios
-android
+android/.gradle/
+android/app/build/
+ios/build/
+
+# Local machine settings
+android/local.properties
 
 # macOS
 .DS_Store
