@@ -227,9 +227,13 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
         )}
 
         <View className="flex-1 bg-black px-4 py-4">
-          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          {section === 'dashboard' ? (
             <View className="flex-1">{content}</View>
-          </ScrollView>
+          ) : (
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+              <View className="flex-1">{content}</View>
+            </ScrollView>
+          )}
         </View>
 
         {!isCompact && (
