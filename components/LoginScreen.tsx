@@ -11,13 +11,17 @@ import {
 } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 
-const AUTH_URL = 'https://web.fortmont.me/api/auth/login';
+const AUTH_URL = 'http://172.20.0.100:3000/api/auth/login';
 
 type AuthUser = {
   id: string;
   username: string;
   displayName: string;
   email: string;
+  isActive: boolean;
+  role: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
 };
 
 export type AuthResponse = {
