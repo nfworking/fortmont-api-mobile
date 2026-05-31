@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Fortmont API Mobile ",
+    "name": "Fortmont",
     "slug": "fortmont-api-mobile",
     "version": "1.0.0",
     "web": {
@@ -13,13 +13,13 @@
       "expo-web-browser"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/fortmont_icon.png",
+    "userInterfaceStyle": "dark",
       "scheme": "com.fortmontapi.app",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -29,8 +29,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/fortmont_icon.png",
+        "backgroundColor": "#000000"
       },
       "package": "com.fortmontapi.app",
       "useCleartextTraffic": true

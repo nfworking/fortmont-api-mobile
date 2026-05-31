@@ -6,7 +6,7 @@ type RealtimeApiResponse = {
   data?: RealtimeVm[];
 };
 
-const API_URL = 'http://172.20.0.100:3000/api/realtime';
+const API_URL = 'https://api.fortmont.me/api/realtime';
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes)) {

@@ -16,8 +16,8 @@ import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const AUTH_URL = 'http://172.20.0.100:3000/api/auth/login';
-const ENTRA_AUTH_URL = 'http://172.20.0.100:3000/api/auth/entra-login';
+const AUTH_URL = 'https://api.fortmont.me/api/auth/login';
+const ENTRA_AUTH_URL = 'https://api.fortmont.me/api/auth/entra-login';
 const DEFAULT_ENTRA_SCOPES = ['openid', 'profile', 'email', 'User.Read'];
 
 type AppExtra = {
