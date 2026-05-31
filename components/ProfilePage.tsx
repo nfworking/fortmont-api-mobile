@@ -1,5 +1,5 @@
 import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2 } from 'lucide-react-native';
-import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import type { AuthResponse } from './LoginScreen';
@@ -141,7 +141,10 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
       if (finalStatus === 'granted') {
         await Notifications.scheduleNotificationAsync({
           content: {
+            title: 'Profile updated',
             body: `profile information update for ${displayName || profile.displayName}`,
+            sound: 'default',
+            ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
           },
           trigger: null,
         });
