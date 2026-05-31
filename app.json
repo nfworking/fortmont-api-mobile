@@ -9,10 +9,13 @@
     "experiments": {
       "tsconfigPaths": true
     },
-    "plugins": [],
+    "plugins": [
+      "expo-web-browser"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+      "scheme": "com.fortmontapi.app",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -35,7 +38,15 @@
     "extra": {
       "eas": {
         "projectId": "17f834c2-e741-4c08-ae43-ad98cf7db728"
-      }
+      },
+        "entraClientId": "827b9380-f015-42a7-a3fe-f8edc047001e",
+        "entraTenantId": "d17e117c-a505-44bf-a8ad-ea1cb324d14a",
+        "entraScopes": [
+          "openid",
+          "profile",
+          "email",
+          "User.Read"
+        ]
     },
     "owner": "nfworking"
   }
