@@ -88,8 +88,8 @@ function ProfileDropdown({
           <Settings size={16} color="#ffffff" />
         </View>
         <View className="ml-3">
-          <Text className="text-sm font-semibold text-white">User settings</Text>
-          <Text className="text-xs text-zinc-400">Open the sample profile page</Text>
+          <Text className="text-sm font-semibold text-white">Profile</Text>
+          <Text className="text-xs text-zinc-400">Open your profile settings</Text>
         </View>
       </Pressable>
     </View>
@@ -334,7 +334,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
 
   const content = useMemo(() => {
     if (section === 'profile') {
-      return <ProfilePage profile={auth.user} />;
+      return <ProfilePage profile={auth.user} token={auth.token} />;
     }
 
     if (section === 'registry') {
