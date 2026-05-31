@@ -33,3 +33,11 @@
        - Android Studio Downloads: https://developer.android.com/studio
        - Expo Environment Setup Guide: https://docs.expo.dev/get-started/set-up-your-environment
       - Expo Android Studio Emulator Guide: https://docs.expo.dev/workflow/android-studio-emulator 
+
+
+### AI usage Information:
+This project was developed by a human developer with assistance from AI tools, primarily GitHub Copilot. The user interface was created using a combination of publicly available design templates, inspiration from the developer's own concepts, and components inspired by Shadcn UI.
+
+AI assistance was used to help adapt and convert interface designs into React Native-compatible implementations. All application logic, architecture, and functionality were designed, reviewed, and validated by the developer. AI-generated code was subject to human review before inclusion in the project.
+
+AI was primarily used as a development aid for tasks such as code suggestions, troubleshooting, and assistance with complex implementation challenges. Final decisions regarding design, functionality, and code quality remained under the developer's control throughout the project.
