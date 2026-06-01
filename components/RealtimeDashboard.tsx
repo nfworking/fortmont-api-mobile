@@ -7,6 +7,7 @@ type RealtimeApiResponse = {
 };
 
 const API_URL = 'https://api.fortmont.me/api/realtime';
+const API_URL_DEV = 'https://api.fortmont.me/api/realtime/prodapp';
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes)) {
