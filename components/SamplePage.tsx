@@ -24,6 +24,7 @@ import type { AuthResponse } from './LoginScreen';
 import { ProfilePage } from './ProfilePage';
 import { RealtimeDashboard } from './RealtimeDashboard';
 import { RegistryPage } from './RegistryPage';
+import { UsersPage } from './UsersPage';
 
 
 
@@ -33,7 +34,7 @@ type SamplePageProps = {
   onLogout: () => void;
 };
 
-type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile';
+type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile' | 'users';
 
 const DRAWER_WIDTH = 280;
 
@@ -352,6 +353,13 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
         </View>
       );
     }
+    if (section === 'users') {
+      return (
+      
+        <UsersPage />
+     
+      );
+    }
 
     return <RealtimeDashboard />;
   }, [section]);
@@ -463,10 +471,11 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
                   label="Users"
                   icon={<Users size={18} color="#ffffff" />}
                   onPress={() => {
-                    setSection('dashboard');
+                    setSection('users');
                     closeSidebar();
                   }}
                 />
+                
               </View>
 
               <View className="mt-4 flex-1 justify-end">
@@ -539,7 +548,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
                 label="Users"
                 icon={<Users size={18} color="#ffffff" />}
                 onPress={() => {
-                  setSection('dashboard');
+                  setSection('users');
                   setIsProfileMenuOpen(false);
                 }}
               />

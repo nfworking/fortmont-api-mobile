@@ -25,41 +25,9 @@ export default function App() {
   // ==========================================
   // 2. NOTIFICATION PERMISSIONS & FOREGROUND LISTENERS
   // ==========================================
-  useEffect(() => {
-    async function setupFirebaseMessaging() {
-      // Android 13+ requires explicit runtime permission to show notifications
-      if (Platform.OS === 'android' && Platform.Version >= 33) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Notification permission granted.');
-        } else {
-          console.log('Notification permission denied.');
-        }
-      }
+  
 
-      // Fetch the FCM device token (Send this to the Fortmont API backend on login)
-      try {
-        const token = await messaging().getToken();
-        console.log('FCM Device Token:', token);
-      } catch (error) {
-        console.error('Error getting FCM token:', error);
-      }
-    }
 
-    setupFirebaseMessaging();
-
-    // Listen for messages while the app is actively open and running (Foreground)
-    const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
-      console.log('A new FCM message arrived in the foreground!', remoteMessage);
-      // You can trigger a UI alert or banner here if you want to notify the user in-app
-    });
-
-    return () => {
-      unsubscribeForeground();
-    };
-  }, []);
 
   // ==========================================
   // EXISTING AUTH HYDRATION

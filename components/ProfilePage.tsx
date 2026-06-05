@@ -1,8 +1,12 @@
-import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2 } from 'lucide-react-native';
+import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2, Bell } from 'lucide-react-native';
 import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
-import * as Notifications from 'expo-notifications';
 import type { AuthResponse } from './LoginScreen';
+import * as Device from 'expo-device';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Import your notification setup function
+import { setupPushNotifications } from '../lib/useNotifications'; // Adjust this path to match your file structure
 
 type ProfilePageProps = {
   profile: AuthResponse['user'];
@@ -66,6 +70,7 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
   const [phone, setPhone] = useState(profile.phone ?? '');
   const [role, setRole] = useState(profile.role ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -89,6 +94,61 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
     setEditing((s) => ({ ...s, [key]: !s[key] }));
   };
 
+  async function handleEnableNotifications() {
+  if (!token) {
+    Alert.alert('Missing token', 'Cannot register device token without an auth token.');
+    return;
+  }
+
+  const alreadySetup = await AsyncStorage.getItem(`push_setup_done_${profile.id}`);
+  if (alreadySetup === 'true') {
+    Alert.alert('Already enabled', `Notifications are already set up on this device for ${profile.displayName || profile.username}.`);
+    return;
+  }
+
+  setIsEnablingPush(true);
+
+  try {
+    const result = await setupPushNotifications();
+
+    if (!result.success) {
+      Alert.alert(
+        result.reason === 'permission_denied'
+          ? 'Permission Denied'
+          : 'Token Failed',
+        'Could not enable notifications.'
+      );
+      return;
+    }
+
+    const res = await fetch(`https://api.fortmont.me/api/devices/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        token: result.token,
+        platform: Platform.OS,
+        deviceVersion: Device.osVersion,
+        deviceName: Device.deviceName,
+        deviceModelName: Device.modelName,
+        deviceBrand: Device.brand,
+      }),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    await AsyncStorage.setItem(`push_setup_done_${profile.id}`, 'true');
+
+    Alert.alert('Success', 'Notifications enabled');
+  } catch (err: any) {
+    Alert.alert('Setup Error', err?.message ?? String(err));
+  } finally {
+    setIsEnablingPush(false);
+  }
+}
+
   async function handleSave() {
     if (!token) {
       Alert.alert('Missing token', 'Cannot update profile without an auth token.');
@@ -100,7 +160,6 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
     if (email !== (profile.email ?? '')) changes.email = email;
     if (phone !== (profile.phone ?? '')) changes.phone = phone;
     if (role !== (profile.role ?? '')) {
-      // Only include role in the PATCH if the current user has admin privileges
       if ((profile.role ?? '').toString().toLowerCase() === 'admin') {
         changes.role = role;
       } else {
@@ -112,7 +171,7 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
 
     setIsSaving(true);
     try {
-      const url = `http://172.20.0.100:3000/api/auth`;
+      const url = `https://api.fortmont.me/api/auth/`;
       const res = await fetch(url, {
         method: 'PATCH',
         headers: {
@@ -125,29 +184,6 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Request failed: ${res.status}`);
-      }
-
-      try {
-        await res.json();
-      } catch (_) {}
-
-      const existing = await Notifications.getPermissionsAsync();
-      let finalStatus = existing.status;
-      if (finalStatus !== 'granted') {
-        const asked = await Notifications.requestPermissionsAsync();
-        finalStatus = asked.status;
-      }
-
-      if (finalStatus === 'granted') {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Profile updated',
-            body: `profile information update for ${displayName || profile.displayName}`,
-            sound: 'default',
-            ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
-          },
-          trigger: null,
-        });
       }
 
       Alert.alert('Success', 'Profile updated successfully');
@@ -192,7 +228,6 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
               </View>
             ))}
 
-            {/* editable rows: displayName, email, phone, role - show as rows with small edit icon */}
             {[
               { label: 'Display name', key: 'displayName', value: displayName, icon: <UserCircle2 size={16} color="#ffffff" /> },
               { label: 'Email', key: 'email', value: email, icon: <Mail size={16} color="#ffffff" /> },
@@ -249,7 +284,24 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
 
           <View className="mt-8 rounded-2xl border border-dashed border-zinc-700 px-4 py-4">
             <Text className="text-sm font-semibold text-white">Settings area</Text>
-            <Text className="mt-2 text-sm text-zinc-400">This section is intentionally static for now. Once the API exposes profile updates, the controls can be added here without changing the surrounding structure.</Text>
+            <Text className="mt-2 text-sm text-zinc-400 mb-4">
+              Manage your application alert preferences directly from your profile dashboard.
+            </Text>
+            
+            <Pressable
+              onPress={handleEnableNotifications}
+              disabled={isEnablingPush}
+              className="flex-row items-center justify-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 active:bg-zinc-700 disabled:opacity-60 px-4 py-3"
+            >
+              {isEnablingPush ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Bell size={16} color="#ffffff" />
+                  <Text className="text-sm font-medium text-white">Enable Notifications</Text>
+                </>
+              )}
+            </Pressable>
           </View>
 
           {hasChanges ? (
