@@ -3,44 +3,74 @@
     "name": "Fortmont",
     "slug": "fortmont-api-mobile",
     "version": "1.0.0",
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "experiments": {
-      "tsconfigPaths": true
-    },
-    "plugins": [
-      "expo-web-browser",
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
-    ],
+
     "orientation": "portrait",
     "icon": "./assets/fortmont_icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "com.fortmontapi.app",
+
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+
+    "experiments": {
+      "tsconfigPaths": true
+    },
+
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
+
     "assetBundlePatterns": [
       "**/*"
     ],
+
     "android": {
+      "package": "com.fortmontapi.app",
+      "googleServicesFile": "./google-services.json",
+      "useCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/fortmont_icon.png",
         "backgroundColor": "#000000"
-      },
-      "package": "com.fortmontapi.app",
-      "googleServicesFile": "./google-services.json",
-      "useCleartextTraffic": true
+      }
     },
+
+    "ios": {
+      "bundleIdentifier": "com.fortmontapi.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": true
+    },
+
+    "plugins": [
+      "expo-web-browser",
+
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBMessaging"
+            ]
+          }
+        }
+      ]
+    ],
+
     "extra": {
       "eas": {
         "projectId": "17f834c2-e741-4c08-ae43-ad98cf7db728"
       },
+
       "entraClientId": "827b9380-f015-42a7-a3fe-f8edc047001e",
       "entraTenantId": "d17e117c-a505-44bf-a8ad-ea1cb324d14a",
+
       "entraScopes": [
         "openid",
         "profile",
@@ -48,6 +78,7 @@
         "User.Read"
       ]
     },
+
     "owner": "nfworking"
   }
 }
