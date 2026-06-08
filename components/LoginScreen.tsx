@@ -13,6 +13,7 @@ import { ArrowRight } from 'lucide-react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -96,6 +97,8 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
   );
 
   const handleLogin = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     const trimmedUsername = username.trim();
     if (!trimmedUsername || !password) {
       setError('Enter your username and password.');
@@ -125,11 +128,15 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
 
       if (!response.ok) {
         throw new Error(payload.message || payload.error || 'Login failed.');
+        
       }
 
       if (!payload.token || !payload.user) {
         throw new Error('Server response was missing the expected token or user data.');
       }
+      await Haptics.notificationAsync(
+       Haptics.NotificationFeedbackType.Success
+      );
 
       onAuthenticated({
         token: payload.token,
@@ -142,9 +149,11 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   const handleEntraLogin = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     if (!entraEnabled) {
       setError(
         'Entra ID is not configured. Set expo.extra.entraClientId and expo.extra.entraTenantId.'

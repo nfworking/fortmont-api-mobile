@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -14,7 +13,6 @@ import {
   Database,
   LayoutDashboard,
   LogOut,
-  Menu,
   ServerCog,
   Settings,
   Users,
@@ -26,9 +24,6 @@ import { RealtimeDashboard } from './RealtimeDashboard';
 import { RegistryPage } from './RegistryPage';
 import { UsersPage } from './UsersPage';
 
-
-
-
 type SamplePageProps = {
   auth: AuthResponse;
   onLogout: () => void;
@@ -36,62 +31,117 @@ type SamplePageProps = {
 
 type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile' | 'users';
 
-const DRAWER_WIDTH = 280;
-
 function cn(...values: (string | false | null | undefined)[]) {
   return values.filter(Boolean).join(' ');
 }
 
-function SidebarItem({
+// ─── Tab bar item ────────────────────────────────────────────────────────────
+
+function TabItem({
   label,
   icon,
   active,
   onPress,
 }: {
   label: string;
-  icon: React.ReactNode;
+  icon: (color: string) => React.ReactNode;
   active?: boolean;
   onPress: () => void;
 }) {
+  const scale = useSharedValue(1);
+  const progress = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [active, progress]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scaleX: interpolate(progress.value, [0, 1], [0.6, 1]) }],
+  }));
+
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const iconColor = active ? '#ffffff' : '#71717a';
+  const labelColor = active ? '#ffffff' : '#71717a';
+
   return (
-    <Pressable
-      onPress={onPress}
-      className={cn(
-        'flex-row items-center rounded-xl px-3 py-3',
-        active ? 'bg-zinc-800' : 'bg-transparent'
-      )}
-    >
-      <View className="w-7 items-center justify-center">{icon}</View>
-      <Text className={cn('ml-3 text-base font-semibold', active ? 'text-white' : 'text-zinc-300')}>
-        {label}
-      </Text>
-    </Pressable>
+    <Animated.View style={pressStyle} className="flex-1 items-center">
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => {
+          scale.value = withSpring(0.88, { damping: 14, stiffness: 320 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 14, stiffness: 320 });
+        }}
+        className="items-center justify-center py-2 w-full"
+      >
+        {/* Active pill indicator */}
+        <Animated.View
+          style={pillStyle}
+          className="absolute top-0 h-0.5 w-8 rounded-full bg-blue-500"
+        />
+
+        <View className="items-center justify-center h-8 w-8">
+          {icon(iconColor)}
+        </View>
+        <Text
+          className="mt-1 text-[10px] font-semibold tracking-wide"
+          style={{ color: labelColor }}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
+
+// ─── Profile dropdown ─────────────────────────────────────────────────────────
 
 function ProfileDropdown({
   name,
   email,
   onOpenProfile,
+  onLogout,
 }: {
   name: string;
   email: string;
   onOpenProfile: () => void;
+  onLogout: () => void;
 }) {
   return (
-    <View className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/30">
+    <View className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
       <View className="border-b border-zinc-800 px-4 py-3">
         <Text className="text-sm font-semibold text-white">{name}</Text>
-        <Text className="mt-1 text-xs text-zinc-400">{email}</Text>
+        <Text className="mt-0.5 text-xs text-zinc-400">{email}</Text>
       </View>
-      <Pressable onPress={onOpenProfile} className="flex-row items-center px-4 py-3 active:bg-zinc-900">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-zinc-800">
-          <Settings size={16} color="#ffffff" />
+      <Pressable
+        onPress={onOpenProfile}
+        className="flex-row items-center gap-3 px-4 py-3 active:bg-zinc-900"
+      >
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
+          <Settings size={14} color="#a1a1aa" />
         </View>
-        <View className="ml-3">
-          <Text className="text-sm font-semibold text-white">Profile</Text>
-          <Text className="text-xs text-zinc-400">Open your profile settings</Text>
+        <View>
+          <Text className="text-sm font-semibold text-white">Profile settings</Text>
+          <Text className="text-xs text-zinc-500">Manage your account</Text>
         </View>
+      </Pressable>
+      <View className="h-px bg-zinc-800" />
+      <Pressable
+        onPress={onLogout}
+        className="flex-row items-center gap-3 px-4 py-3 active:bg-zinc-900"
+      >
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
+          <LogOut size={14} color="#ef4444" />
+        </View>
+        <Text className="text-sm font-semibold text-red-400">Log out</Text>
       </Pressable>
     </View>
   );
@@ -105,6 +155,7 @@ function ProfileMenuButton({
   isOpen,
   onToggle,
   onOpenProfile,
+  onLogout,
 }: {
   name: string;
   email: string;
@@ -113,6 +164,7 @@ function ProfileMenuButton({
   isOpen: boolean;
   onToggle: () => void;
   onOpenProfile: () => void;
+  onLogout: () => void;
 }) {
   const pressScale = useSharedValue(1);
   const menuProgress = useSharedValue(0);
@@ -130,22 +182,17 @@ function ProfileMenuButton({
 
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        rotateZ: `${interpolate(menuProgress.value, [0, 1], [0, 180])}deg`,
-      },
+      { rotateZ: `${interpolate(menuProgress.value, [0, 1], [0, 180])}deg` },
     ],
   }));
 
   const menuStyle = useAnimatedStyle(() => ({
     opacity: interpolate(menuProgress.value, [0, 1], [0, 1]),
     transform: [
-      {
-        translateY: interpolate(menuProgress.value, [0, 1], [-6, 0]),
-      },
-      {
-        scale: interpolate(menuProgress.value, [0, 1], [0.98, 1]),
-      },
+      { translateY: interpolate(menuProgress.value, [0, 1], [-8, 0]) },
+      { scale: interpolate(menuProgress.value, [0, 1], [0.97, 1]) },
     ],
+    pointerEvents: isOpen ? 'auto' : 'none',
   }));
 
   return (
@@ -154,194 +201,94 @@ function ProfileMenuButton({
         <Pressable
           onPress={onToggle}
           onPressIn={() => {
-            pressScale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
+            pressScale.value = withSpring(0.94, { damping: 15, stiffness: 300 });
           }}
           onPressOut={() => {
             pressScale.value = withSpring(1, { damping: 15, stiffness: 300 });
           }}
-          className="flex-row items-center rounded-full border border-zinc-800 bg-zinc-900 px-2 py-1"
+          className="flex-row items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 p-1 pr-2"
         >
-          <View className="h-9 w-9 overflow-hidden rounded-full bg-zinc-800">
+          <View className="h-8 w-8 overflow-hidden rounded-full bg-zinc-800">
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} className="h-9 w-9 rounded-full" resizeMode="cover" />
+              <Image
+                source={{ uri: avatarUrl }}
+                className="h-8 w-8 rounded-full"
+                resizeMode="cover"
+              />
             ) : (
-              <View className="h-9 w-9 items-center justify-center rounded-full bg-zinc-800">
-                <Text className="text-sm font-semibold text-white">{initial}</Text>
+              <View className="h-8 w-8 items-center justify-center">
+                <Text className="text-xs font-bold text-white">{initial}</Text>
               </View>
             )}
           </View>
           <Animated.View style={chevronStyle}>
-            <ChevronDown size={14} color="#a1a1aa" style={{ marginLeft: 6 }} />
+            <ChevronDown size={13} color="#71717a" />
           </Animated.View>
         </Pressable>
       </Animated.View>
 
-      {isOpen && (
-        <Animated.View style={menuStyle} className="absolute right-0 top-14 z-30 w-64">
-          <ProfileDropdown name={name} email={email} onOpenProfile={onOpenProfile} />
-        </Animated.View>
-      )}
+      <Animated.View
+        style={menuStyle}
+        className="absolute right-0 top-12 z-50 w-64"
+      >
+        <ProfileDropdown
+          name={name}
+          email={email}
+          onOpenProfile={onOpenProfile}
+          onLogout={onLogout}
+        />
+      </Animated.View>
     </View>
   );
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
+const NAV_ITEMS: {
+  key: SectionKey;
+  label: string;
+  icon: (color: string) => React.ReactNode;
+}[] = [
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    icon: (c) => <LayoutDashboard size={20} color={c} />,
+  },
+  {
+    key: 'registry',
+    label: 'Registry',
+    icon: (c) => <Database size={20} color={c} />,
+  },
+  {
+    key: 'lxc',
+    label: 'LXC',
+    icon: (c) => <ServerCog size={20} color={c} />,
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    icon: (c) => <Users size={20} color={c} />,
+  },
+];
+
 export function SamplePage({ auth, onLogout }: SamplePageProps) {
   const [section, setSection] = useState<SectionKey>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarMounted, setIsSidebarMounted] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const isCompact = width < 768;
-  const drawerProgress = useSharedValue(0);
   const profileInitial = auth.user.displayName.slice(0, 1).toUpperCase();
-  const isDraggingSidebar = useRef(false);
 
   const openProfilePage = () => {
     setSection('profile');
     setIsProfileMenuOpen(false);
-    setIsSidebarOpen(false);
   };
-
-  const toggleProfileMenu = () => {
-    setIsProfileMenuOpen((value) => !value);
-  };
-
-  useEffect(() => {
-    if (isCompact && isSidebarOpen) {
-      setIsSidebarMounted(true);
-    }
-
-    drawerProgress.value = withTiming(isSidebarOpen ? 1 : 0, {
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-    }, (finished) => {
-      if (finished && !isSidebarOpen) {
-        runOnJS(setIsSidebarMounted)(false);
-      }
-    });
-  }, [drawerProgress, isCompact, isSidebarOpen]);
-
-  useEffect(() => {
-    if (!isCompact) {
-      setIsSidebarMounted(false);
-      setIsSidebarOpen(false);
-      setIsProfileMenuOpen(false);
-      isDraggingSidebar.current = false;
-    }
-  }, [isCompact]);
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(drawerProgress.value, [0, 1], [0, 1]),
-  }));
-
-  const drawerStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: interpolate(drawerProgress.value, [0, 1], [-DRAWER_WIDTH, 0]),
-      },
-    ],
-  }));
-
-  const clampProgress = (value: number) => Math.max(0, Math.min(1, value));
-
-  const updateDrawerProgress = (value: number) => {
-    drawerProgress.value = clampProgress(value);
-  };
-
-  const openSidebar = () => {
-    setIsSidebarMounted(true);
-    setIsSidebarOpen(true);
-    setIsProfileMenuOpen(false);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-    setIsProfileMenuOpen(false);
-  };
-
-  const sidebarEdgeResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => isCompact && !isSidebarOpen,
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          isCompact &&
-          !isSidebarOpen &&
-          Math.abs(gestureState.dx) > 8 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-        onPanResponderGrant: () => {
-          isDraggingSidebar.current = true;
-          setIsSidebarMounted(true);
-        },
-        onPanResponderMove: (_, gestureState) => {
-          if (!isDraggingSidebar.current) {
-            return;
-          }
-
-          updateDrawerProgress(gestureState.dx / DRAWER_WIDTH);
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (!isDraggingSidebar.current) {
-            return;
-          }
-
-          const shouldOpen = gestureState.dx > DRAWER_WIDTH * 0.35 || gestureState.vx > 0.5;
-          isDraggingSidebar.current = false;
-          setIsSidebarOpen(shouldOpen);
-        },
-        onPanResponderTerminate: () => {
-          isDraggingSidebar.current = false;
-          setIsSidebarOpen(false);
-        },
-      }),
-    [isCompact, isSidebarOpen, drawerProgress]
-  );
-
-  const sidebarDrawerResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => isCompact && isSidebarOpen,
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          isCompact &&
-          isSidebarOpen &&
-          Math.abs(gestureState.dx) > 8 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-        onPanResponderGrant: () => {
-          isDraggingSidebar.current = true;
-        },
-        onPanResponderMove: (_, gestureState) => {
-          if (!isDraggingSidebar.current) {
-            return;
-          }
-
-          updateDrawerProgress(1 + gestureState.dx / DRAWER_WIDTH);
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (!isDraggingSidebar.current) {
-            return;
-          }
-
-          const shouldOpen = !(gestureState.dx < -DRAWER_WIDTH * 0.2 || gestureState.vx < -0.5);
-          isDraggingSidebar.current = false;
-          setIsSidebarOpen(shouldOpen);
-        },
-        onPanResponderTerminate: () => {
-          isDraggingSidebar.current = false;
-          setIsSidebarOpen(true);
-        },
-      }),
-    [isCompact, isSidebarOpen, drawerProgress]
-  );
 
   const content = useMemo(() => {
     if (section === 'profile') {
       return <ProfilePage profile={auth.user} token={auth.token} />;
     }
-
     if (section === 'registry') {
       return <RegistryPage />;
     }
-
     if (section === 'lxc') {
       return (
         <View className="flex-1 rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-6">
@@ -354,223 +301,89 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
       );
     }
     if (section === 'users') {
-      return (
-      
-        <UsersPage />
-     
-      );
+      return <UsersPage />;
     }
-
     return <RealtimeDashboard />;
-  }, [section]);
+  }, [section, auth.user, auth.token]);
+
+  // Tab bar height for bottom padding
+  const TAB_BAR_HEIGHT = 60;
 
   return (
     <View className="flex-1 bg-black">
-      {isCompact && (
-        <View className="relative border-b border-zinc-900 bg-zinc-950 px-4" style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}>
-          <View className="flex-row items-center">
-            <Pressable
-              onPress={() => {
-                if (isSidebarOpen) {
-                  closeSidebar();
-                } else {
-                  openSidebar();
-                }
-              }}
-              className="mr-3 h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900"
-            >
-              <Menu size={18} color="#ffffff" />
-            </Pressable>
-            <View className="flex-1">
-              <Text className="text-base font-bold text-white">Fortmont API</Text>
-              <Text className="text-xs text-zinc-400">Admin dashboard</Text>
-            </View>
-            <ProfileMenuButton
-              name={auth.user.displayName}
-              email={auth.user.email}
-              avatarUrl={auth.user.avatarUrl}
-              initial={profileInitial}
-              isOpen={isProfileMenuOpen}
-              onToggle={toggleProfileMenu}
-              onOpenProfile={openProfilePage}
-            />
-          </View>
+      {/* ── Top header ── */}
+      <View
+        className="flex-row items-center border-b border-zinc-900 bg-zinc-950 px-4"
+        style={{ paddingTop: insets.top + 10, paddingBottom: 10 }}
+      >
+        <View className="flex-1">
+          <Text className="text-base font-bold text-white">Fortmont API</Text>
+          <Text className="text-xs text-zinc-500">Admin dashboard</Text>
         </View>
-      )}
+        <ProfileMenuButton
+          name={auth.user.displayName}
+          email={auth.user.email}
+          avatarUrl={auth.user.avatarUrl}
+          initial={profileInitial}
+          isOpen={isProfileMenuOpen}
+          onToggle={() => setIsProfileMenuOpen((v) => !v)}
+          onOpenProfile={openProfilePage}
+          onLogout={onLogout}
+        />
+      </View>
 
-      {!isCompact && (
-        <View
-          className="relative flex-row items-center border-b border-zinc-900 bg-zinc-950 px-4"
-          style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
-        >
-          <View className="flex-1">
-            <Text className="text-base font-bold text-white">Fortmont API</Text>
-            <Text className="text-xs text-zinc-400">Admin dashboard</Text>
+      {/* ── Page content ── */}
+      <View className="flex-1">
+        {section === 'dashboard' ? (
+          <View className="flex-1 px-4 pt-4" style={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 8 }}>
+            {content}
           </View>
-
-          <ProfileMenuButton
-            name={auth.user.displayName}
-            email={auth.user.email}
-            avatarUrl={auth.user.avatarUrl}
-            initial={profileInitial}
-            isOpen={isProfileMenuOpen}
-            onToggle={toggleProfileMenu}
-            onOpenProfile={openProfilePage}
-          />
-        </View>
-      )}
-
-      <View className="flex-1 flex-row">
-        {isCompact && isSidebarMounted && (
-          <View className="absolute inset-0 z-20">
-            <Animated.View className="absolute inset-0 bg-black/60" style={overlayStyle}>
-              <Pressable className="absolute inset-0" onPress={closeSidebar} />
-            </Animated.View>
-
-            {!isSidebarOpen && (
-              <View className="absolute bottom-0 left-0 top-0 z-30 w-6" {...sidebarEdgeResponder.panHandlers} />
-            )}
-
-            <Animated.View
-              className="absolute left-0 top-0 h-full w-[280px] border-r border-zinc-900 bg-zinc-950 px-3"
-              style={[
-                drawerStyle,
-                { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
-              ]}
-              {...sidebarDrawerResponder.panHandlers}
-            >
-              <View className="gap-2">
-                <SidebarItem
-                  label="Dashboard"
-                  icon={<LayoutDashboard size={18} color="#ffffff" />}
-                  active={section === 'dashboard'}
-                  onPress={() => {
-                    setSection('dashboard');
-                    closeSidebar();
-                  }}
-                />
-                <SidebarItem
-                  label="Registry"
-                  icon={<Database size={18} color="#ffffff" />}
-                  active={section === 'registry'}
-                  onPress={() => {
-                    setSection('registry');
-                    closeSidebar();
-                  }}
-                />
-                <SidebarItem
-                  label="LXC"
-                  icon={<ServerCog size={18} color="#ffffff" />}
-                  active={section === 'lxc'}
-                  onPress={() => {
-                    setSection('lxc');
-                    closeSidebar();
-                  }}
-                />
-                <SidebarItem
-                  label="Users"
-                  icon={<Users size={18} color="#ffffff" />}
-                  onPress={() => {
-                    setSection('users');
-                    closeSidebar();
-                  }}
-                />
-                
-              </View>
-
-              <View className="mt-4 flex-1 justify-end">
-                <Pressable
-                  onPress={() => {
-                    closeSidebar();
-                    onLogout();
-                  }}
-                  className="flex-row items-center rounded-xl border border-zinc-800 px-3 py-3"
-                >
-                  <View className="w-7 items-center justify-center">
-                    <LogOut size={18} color="#ffffff" />
-                  </View>
-                  <Text className="ml-3 text-base font-semibold text-white">Log out</Text>
-                </Pressable>
-              </View>
-            </Animated.View>
-          </View>
-        )}
-
-        <View className="flex-1 bg-black px-4 py-4">
-          {section === 'dashboard' ? (
-            <View className="flex-1">{content}</View>
-          ) : (
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-              <View className="flex-1">{content}</View>
-            </ScrollView>
-          )}
-        </View>
-
-        {!isCompact && (
-          <View
-            className="w-[280px] border-l border-zinc-900 bg-zinc-950 px-3"
-            style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }}
+        ) : (
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: 16,
+              paddingTop: 16,
+              paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16,
+            }}
+            showsVerticalScrollIndicator={false}
           >
-            <View className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4">
-              <Text className="text-lg font-bold text-white">Fortmont API</Text>
-              <Text className="mt-1 text-sm text-zinc-400">Admin dashboard</Text>
-            </View>
-
-            <View className="gap-2">
-              <SidebarItem
-                label="Dashboard"
-                icon={<LayoutDashboard size={18} color="#ffffff" />}
-                active={section === 'dashboard'}
-                onPress={() => {
-                  setSection('dashboard');
-                  setIsProfileMenuOpen(false);
-                }}
-              />
-              <SidebarItem
-                label="Registry"
-                icon={<Database size={18} color="#ffffff" />}
-                active={section === 'registry'}
-                onPress={() => {
-                  setSection('registry');
-                  setIsProfileMenuOpen(false);
-                }}
-              />
-              <SidebarItem
-                label="LXC"
-                icon={<ServerCog size={18} color="#ffffff" />}
-                active={section === 'lxc'}
-                onPress={() => {
-                  setSection('lxc');
-                  setIsProfileMenuOpen(false);
-                }}
-              />
-              <SidebarItem
-                label="Users"
-                icon={<Users size={18} color="#ffffff" />}
-                onPress={() => {
-                  setSection('users');
-                  setIsProfileMenuOpen(false);
-                }}
-              />
-            </View>
-
-            <View className="mt-4 flex-1 justify-end">
-              <Pressable
-                onPress={() => {
-                  closeSidebar();
-                  onLogout();
-                }}
-                className="flex-row items-center rounded-xl border border-zinc-800 px-3 py-3"
-              >
-                <View className="w-7 items-center justify-center">
-                  <LogOut size={18} color="#ffffff" />
-                </View>
-                <Text className="ml-3 text-base font-semibold text-white">Log out</Text>
-              </Pressable>
-            </View>
-          </View>
+            <View className="flex-1">{content}</View>
+          </ScrollView>
         )}
       </View>
+
+      {/* ── Bottom tab bar ── */}
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-zinc-800/80 bg-zinc-950/95"
+        style={{ paddingBottom: insets.bottom }}
+      >
+        <View
+          className="flex-row items-stretch"
+          style={{ height: TAB_BAR_HEIGHT }}
+        >
+          {NAV_ITEMS.map((item) => (
+            <TabItem
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              active={section === item.key}
+              onPress={() => {
+                setSection(item.key);
+                setIsProfileMenuOpen(false);
+              }}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Dismiss profile menu on outside tap */}
+      {isProfileMenuOpen && (
+        <Pressable
+          className="absolute inset-0 z-40"
+          onPress={() => setIsProfileMenuOpen(false)}
+        />
+      )}
     </View>
   );
 }
