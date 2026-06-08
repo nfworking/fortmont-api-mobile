@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -18,24 +18,22 @@ import {
   Users,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from '@react-native-community/blur';
 import type { AuthResponse } from './LoginScreen';
 import { ProfilePage } from './ProfilePage';
 import { RealtimeDashboard } from './RealtimeDashboard';
 import { RegistryPage } from './RegistryPage';
 import { UsersPage } from './UsersPage';
-
+import { StyleSheet } from 'react-native';
+import ImmichGallery from "./ImmichGallery";
 type SamplePageProps = {
   auth: AuthResponse;
   onLogout: () => void;
 };
 
-type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile' | 'users';
+type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile' | 'users' | 'immich';
 
-function cn(...values: (string | false | null | undefined)[]) {
-  return values.filter(Boolean).join(' ');
-}
-
-// ─── Tab bar item ────────────────────────────────────────────────────────────
+// ─── Floating tab item ────────────────────────────────────────────────────────
 
 function TabItem({
   label,
@@ -44,7 +42,7 @@ function TabItem({
   onPress,
 }: {
   label: string;
-  icon: (color: string) => React.ReactNode;
+  icon: (color: string, size: number) => React.ReactNode;
   active?: boolean;
   onPress: () => void;
 }) {
@@ -53,50 +51,54 @@ function TabItem({
 
   useEffect(() => {
     progress.value = withTiming(active ? 1 : 0, {
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [active, progress]);
-
-  const pillStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scaleX: interpolate(progress.value, [0, 1], [0.6, 1]) }],
-  }));
+  duration: 220,
+  easing: Easing.out(Easing.cubic),
+});
+  }, [active]);
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const iconColor = active ? '#ffffff' : '#71717a';
-  const labelColor = active ? '#ffffff' : '#71717a';
+  // Active pill expands to show label; inactive collapses to icon only
+  const pillStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.18])})`,
+    paddingHorizontal: interpolate(progress.value, [0, 1], [10, 16]),
+    borderWidth: interpolate(progress.value, [0, 1], [0, 0.8]),
+    borderColor: `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.25])})`,
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    maxWidth: interpolate(progress.value, [0, 1], [0, 72]),
+    marginLeft: interpolate(progress.value, [0, 1], [0, 6]),
+  }));
+
+  const iconColor = active ? '#ffffff' : 'rgba(255,255,255,0.55)';
 
   return (
-    <Animated.View style={pressStyle} className="flex-1 items-center">
+    <Animated.View style={pressStyle}>
       <Pressable
         onPress={onPress}
         onPressIn={() => {
-          scale.value = withSpring(0.88, { damping: 14, stiffness: 320 });
+scale.value = withTiming(0.87, { duration: 80, easing: Easing.out(Easing.quad) });
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, { damping: 14, stiffness: 320 });
+scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.cubic) });
         }}
-        className="items-center justify-center py-2 w-full"
       >
-        {/* Active pill indicator */}
         <Animated.View
           style={pillStyle}
-          className="absolute top-0 h-0.5 w-8 rounded-full bg-blue-500"
-        />
-
-        <View className="items-center justify-center h-8 w-8">
-          {icon(iconColor)}
-        </View>
-        <Text
-          className="mt-1 text-[10px] font-semibold tracking-wide"
-          style={{ color: labelColor }}
+          className="flex-row items-center rounded-full py-2.5"
         >
-          {label}
-        </Text>
+          {icon(iconColor, 20)}
+          <Animated.Text
+            style={[labelStyle, { color: '#ffffff', fontSize: 13, fontWeight: '600', overflow: 'hidden' }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Animated.Text>
+        </Animated.View>
       </Pressable>
     </Animated.View>
   );
@@ -116,33 +118,89 @@ function ProfileDropdown({
   onLogout: () => void;
 }) {
   return (
-    <View className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
-      <View className="border-b border-zinc-800 px-4 py-3">
-        <Text className="text-sm font-semibold text-white">{name}</Text>
-        <Text className="mt-0.5 text-xs text-zinc-400">{email}</Text>
+    <View
+      style={{
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 0.8,
+        borderColor: 'rgba(255,255,255,0.15)',
+      }}
+    >
+      {/* Blur sits behind everything as an absolute layer */}
+      <BlurView
+        blurType="dark"
+        blurAmount={40}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Glass tint over the blur */}
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: 'rgba(20,20,20,0.55)' },
+        ]}
+      />
+
+      {/* Content on top */}
+      <View>
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 0.5,
+            borderBottomColor: 'rgba(255,255,255,0.1)',
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{name}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{email}</Text>
+        </View>
+
+        <Pressable
+          onPress={onOpenProfile}
+          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
+        >
+          <View
+            style={{
+              height: 32,
+              width: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.1)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Settings size={14} color="rgba(255,255,255,0.7)" />
+          </View>
+          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: '#fff' }}>
+            Profile settings
+          </Text>
+        </Pressable>
+
+        <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+
+        <Pressable
+          onPress={onLogout}
+          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
+        >
+          <View
+            style={{
+              height: 32,
+              width: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(239,68,68,0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <LogOut size={14} color="#f87171" />
+          </View>
+          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: '#f87171' }}>
+            Log out
+          </Text>
+        </Pressable>
       </View>
-      <Pressable
-        onPress={onOpenProfile}
-        className="flex-row items-center gap-3 px-4 py-3 active:bg-zinc-900"
-      >
-        <View className="h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
-          <Settings size={14} color="#a1a1aa" />
-        </View>
-        <View>
-          <Text className="text-sm font-semibold text-white">Profile settings</Text>
-          <Text className="text-xs text-zinc-500">Manage your account</Text>
-        </View>
-      </Pressable>
-      <View className="h-px bg-zinc-800" />
-      <Pressable
-        onPress={onLogout}
-        className="flex-row items-center gap-3 px-4 py-3 active:bg-zinc-900"
-      >
-        <View className="h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
-          <LogOut size={14} color="#ef4444" />
-        </View>
-        <Text className="text-sm font-semibold text-red-400">Log out</Text>
-      </Pressable>
     </View>
   );
 }
@@ -174,102 +232,83 @@ function ProfileMenuButton({
       duration: 180,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isOpen, menuProgress]);
+  }, [isOpen]);
 
   const buttonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }));
 
   const chevronStyle = useAnimatedStyle(() => ({
-    transform: [
-      { rotateZ: `${interpolate(menuProgress.value, [0, 1], [0, 180])}deg` },
-    ],
+    transform: [{ rotateZ: `${interpolate(menuProgress.value, [0, 1], [0, 180])}deg` }],
   }));
 
   const menuStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(menuProgress.value, [0, 1], [0, 1]),
+    opacity: menuProgress.value,
     transform: [
-      { translateY: interpolate(menuProgress.value, [0, 1], [-8, 0]) },
-      { scale: interpolate(menuProgress.value, [0, 1], [0.97, 1]) },
+      { translateY: interpolate(menuProgress.value, [0, 1], [-10, 0]) },
+      { scale: interpolate(menuProgress.value, [0, 1], [0.96, 1]) },
     ],
-    pointerEvents: isOpen ? 'auto' : 'none',
   }));
 
   return (
-    <View className="relative">
+    <View style={{ position: 'relative' }}>
       <Animated.View style={buttonStyle}>
         <Pressable
           onPress={onToggle}
-          onPressIn={() => {
-            pressScale.value = withSpring(0.94, { damping: 15, stiffness: 300 });
+          onPressIn={() => { pressScale.value = withSpring(0.93, { damping: 15, stiffness: 300 }); }}
+          onPressOut={() => { pressScale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingLeft: 4,
+            paddingRight: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            borderWidth: 0.8,
+            borderColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: 'rgba(255,255,255,0.08)',
           }}
-          onPressOut={() => {
-            pressScale.value = withSpring(1, { damping: 15, stiffness: 300 });
-          }}
-          className="flex-row items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 p-1 pr-2"
         >
-          <View className="h-8 w-8 overflow-hidden rounded-full bg-zinc-800">
+          <View style={{ height: 32, width: 32, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.1)' }}>
             {avatarUrl ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                className="h-8 w-8 rounded-full"
-                resizeMode="cover"
-              />
+              <Image source={{ uri: avatarUrl }} style={{ height: 32, width: 32, borderRadius: 16 }} resizeMode="cover" />
             ) : (
-              <View className="h-8 w-8 items-center justify-center">
-                <Text className="text-xs font-bold text-white">{initial}</Text>
+              <View style={{ height: 32, width: 32, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{initial}</Text>
               </View>
             )}
           </View>
           <Animated.View style={chevronStyle}>
-            <ChevronDown size={13} color="#71717a" />
+            <ChevronDown size={13} color="rgba(255,255,255,0.5)" />
           </Animated.View>
         </Pressable>
       </Animated.View>
 
-      <Animated.View
-        style={menuStyle}
-        className="absolute right-0 top-12 z-50 w-64"
-      >
-        <ProfileDropdown
-          name={name}
-          email={email}
-          onOpenProfile={onOpenProfile}
-          onLogout={onLogout}
-        />
-      </Animated.View>
+      {isOpen && (
+        <Animated.View style={[menuStyle, { position: 'absolute', right: 0, top: 48, zIndex: 50, width: 240 }]}>
+          <ProfileDropdown name={name} email={email} onOpenProfile={onOpenProfile} onLogout={onLogout} />
+        </Animated.View>
+      )}
     </View>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Nav items config ─────────────────────────────────────────────────────────
 
 const NAV_ITEMS: {
   key: SectionKey;
   label: string;
-  icon: (color: string) => React.ReactNode;
+  icon: (color: string, size: number) => React.ReactNode;
 }[] = [
-  {
-    key: 'dashboard',
-    label: 'Dashboard',
-    icon: (c) => <LayoutDashboard size={20} color={c} />,
-  },
-  {
-    key: 'registry',
-    label: 'Registry',
-    icon: (c) => <Database size={20} color={c} />,
-  },
-  {
-    key: 'lxc',
-    label: 'LXC',
-    icon: (c) => <ServerCog size={20} color={c} />,
-  },
-  {
-    key: 'users',
-    label: 'Users',
-    icon: (c) => <Users size={20} color={c} />,
-  },
+  { key: 'dashboard', label: 'Home',     icon: (c, s) => <LayoutDashboard size={s} color={c} /> },
+  { key: 'registry',  label: 'Registry', icon: (c, s) => <Database        size={s} color={c} /> },
+  { key: 'lxc',       label: 'LXC',      icon: (c, s) => <ServerCog       size={s} color={c} /> },
+  { key: 'users',     label: 'Users',    icon: (c, s) => <Users           size={s} color={c} /> },
+  { key: 'immich',    label: 'Immich',   icon: (c, s) => <Users           size={s} color={c} /> },
 ];
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function SamplePage({ auth, onLogout }: SamplePageProps) {
   const [section, setSection] = useState<SectionKey>('dashboard');
@@ -277,48 +316,48 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
   const insets = useSafeAreaInsets();
   const profileInitial = auth.user.displayName.slice(0, 1).toUpperCase();
 
-  const openProfilePage = () => {
-    setSection('profile');
-    setIsProfileMenuOpen(false);
-  };
+  const NAVBAR_HEIGHT = 64;
+  const NAVBAR_BOTTOM = insets.bottom + 16;
 
   const content = useMemo(() => {
-    if (section === 'profile') {
-      return <ProfilePage profile={auth.user} token={auth.token} />;
-    }
-    if (section === 'registry') {
-      return <RegistryPage />;
+    if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
+    if (section === 'registry') return <RegistryPage />;
+    if (section === 'immich') {
+      return (
+     <Text>Hello</Text>
+      );
     }
     if (section === 'lxc') {
       return (
-        <View className="flex-1 rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-6">
-          <Text className="text-sm uppercase tracking-[0.3em] text-zinc-500">LXC</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">LXC Registry</Text>
-          <Text className="mt-3 text-zinc-400">
-            This section is intentionally left empty for now.
-          </Text>
+        <View style={{ flex: 1, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: '#09090b', paddingHorizontal: 24, paddingVertical: 24 }}>
+          <Text style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#52525b' }}>LXC</Text>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: '#fff', marginTop: 8 }}>LXC Registry</Text>
+          <Text style={{ color: '#71717a', marginTop: 12 }}>This section is intentionally left empty for now.</Text>
         </View>
       );
     }
-    if (section === 'users') {
-      return <UsersPage />;
-    }
+    if (section === 'users') return <UsersPage />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token]);
 
-  // Tab bar height for bottom padding
-  const TAB_BAR_HEIGHT = 60;
-
   return (
-    <View className="flex-1 bg-black">
-      {/* ── Top header ── */}
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {/* Top header */}
       <View
-        className="flex-row items-center border-b border-zinc-900 bg-zinc-950 px-4"
-        style={{ paddingTop: insets.top + 10, paddingBottom: 10 }}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingTop: insets.top + 10,
+          paddingBottom: 10,
+          paddingHorizontal: 16,
+          borderBottomWidth: 0.5,
+          borderBottomColor: 'rgba(255,255,255,0.08)',
+          backgroundColor: 'rgba(9,9,11,0.95)',
+        }}
       >
-        <View className="flex-1">
-          <Text className="text-base font-bold text-white">Fortmont API</Text>
-          <Text className="text-xs text-zinc-500">Admin dashboard</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Fortmont API</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Admin dashboard</Text>
         </View>
         <ProfileMenuButton
           name={auth.user.displayName}
@@ -327,41 +366,80 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
           initial={profileInitial}
           isOpen={isProfileMenuOpen}
           onToggle={() => setIsProfileMenuOpen((v) => !v)}
-          onOpenProfile={openProfilePage}
+          onOpenProfile={() => { setSection('profile'); setIsProfileMenuOpen(false); }}
           onLogout={onLogout}
         />
       </View>
 
-      {/* ── Page content ── */}
-      <View className="flex-1">
-        {section === 'dashboard' ? (
-          <View className="flex-1 px-4 pt-4" style={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 8 }}>
-            {content}
-          </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: 16,
-              paddingTop: 16,
-              paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View className="flex-1">{content}</View>
-          </ScrollView>
-        )}
-      </View>
-
-      {/* ── Bottom tab bar ── */}
-      <View
-        className="absolute bottom-0 left-0 right-0 border-t border-zinc-800/80 bg-zinc-950/95"
-        style={{ paddingBottom: insets.bottom }}
-      >
-        <View
-          className="flex-row items-stretch"
-          style={{ height: TAB_BAR_HEIGHT }}
+      {/* Content */}
+      {section === 'dashboard' ? (
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: NAVBAR_HEIGHT + NAVBAR_BOTTOM + 16 }}>
+          {content}
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: NAVBAR_HEIGHT + NAVBAR_BOTTOM + 16,
+          }}
+          showsVerticalScrollIndicator={false}
         >
+          {content}
+        </ScrollView>
+      )}
+
+      {/* ── Floating liquid-glass navbar ── */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: NAVBAR_BOTTOM,
+          left: 24,
+          right: 24,
+          height: NAVBAR_HEIGHT,
+          borderRadius: 999,
+          overflow: 'hidden',
+          // Soft shadow for lift
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.55,
+          shadowRadius: 20,
+          elevation: 18,
+        }}
+      >
+        {/* Blur layer */}
+        <BlurView
+          blurType="dark"
+          blurAmount={50}
+          style={{ position: 'absolute', inset: 0 }}
+        />
+        {/* Glass tint + border */}
+        <View
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(255,255,255,0.07)',
+            borderRadius: 999,
+            borderWidth: 0.8,
+            borderColor: 'rgba(255,255,255,0.18)',
+          }}
+        />
+        {/* Top specular sheen */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '15%',
+            right: '15%',
+            height: 1,
+            backgroundColor: 'rgba(255,255,255,0.35)',
+            borderRadius: 999,
+          }}
+        />
+
+        {/* Tab items */}
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', paddingHorizontal: 8 }}>
           {NAV_ITEMS.map((item) => (
             <TabItem
               key={item.key}
@@ -377,10 +455,10 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
         </View>
       </View>
 
-      {/* Dismiss profile menu on outside tap */}
+      {/* Dismiss profile menu */}
       {isProfileMenuOpen && (
         <Pressable
-          className="absolute inset-0 z-40"
+          style={{ position: 'absolute', inset: 0, zIndex: 40 }}
           onPress={() => setIsProfileMenuOpen(false)}
         />
       )}

@@ -29,7 +29,7 @@ export default function App() {
 
 
 
-  // ==========================================
+  // ========================================== 
   // EXISTING AUTH HYDRATION
   // ==========================================
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function App() {
   if (isHydrating) {
     return (
       <SafeAreaProvider>
-        <View className="dark flex-1 items-center justify-center bg-black">
+        <View className="light flex-1 items-center justify-center ">
           <ActivityIndicator color="#ffffff" />
           <Text className="mt-4 text-sm text-zinc-400">Restoring session...</Text>
         </View>
@@ -74,7 +74,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View className="dark flex-1 bg-black">
+      <View className="light flex-1 ">
         {auth ? (
           <SamplePage auth={auth} onLogout={handleLogout} />
         ) : (

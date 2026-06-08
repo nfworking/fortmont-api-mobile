@@ -259,7 +259,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-black"
+      className="flex-1 bg-white dark:bg-black"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
