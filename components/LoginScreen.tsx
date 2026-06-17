@@ -14,6 +14,9 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
+import { useColorScheme } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemeToggle } from './ThemeToggle';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -53,6 +56,8 @@ function cn(...values: (string | false | null | undefined)[]) {
 }
 
 export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -259,29 +264,35 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white dark:bg-black"
+      className="flex-1 bg-zinc-50 dark:bg-black"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View
+        className="absolute right-4 z-10"
+        style={{ top: insets.top + 12 }}
+      >
+        <ThemeToggle />
+      </View>
       <ScrollView
         className="flex-1 px-6"
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 justify-center py-16">
-          <View className="mx-auto w-full max-w-xl rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-8">
+          <View className="mx-auto w-full max-w-xl rounded-3xl border border-zinc-200 bg-white px-6 py-8 dark:border-zinc-800 dark:bg-zinc-950">
             <View className="items-center gap-2 text-center mb-6">
-              <View className="mb-2 h-16 w-16 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900">
-                <Text className="text-lg font-bold text-white">L</Text>
+              <View className="mb-2 h-16 w-16 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
+                <Text className="text-lg font-bold text-zinc-900 dark:text-white">L</Text>
               </View>
-              <Text className="text-2xl font-bold text-white">Login to your account</Text>
-              <Text className="text-sm text-center text-zinc-400">
+              <Text className="text-2xl font-bold text-zinc-900 dark:text-white">Login to your account</Text>
+              <Text className="text-sm text-center text-zinc-500 dark:text-zinc-400">
                 Enter your username below to login to your account
               </Text>
             </View>
 
             <View className="gap-5">
               <View className="gap-2">
-                <Text className="text-sm font-medium text-zinc-200">Username</Text>
+                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Username</Text>
                 <TextInput
                   value={username}
                   onChangeText={setUsername}
@@ -290,20 +301,20 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
                   autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-4 text-base text-white"
+                  className="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
                 />
               </View>
 
               <View className="gap-2">
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-medium text-zinc-200">Password</Text>
+                  <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Password</Text>
                   <Pressable
                     onPress={() =>
                       Alert.alert('Forgot password', 'Use the support flow for password resets.')
                     }
                     className="ml-auto"
                   >
-                    <Text className="text-sm text-zinc-400 underline-offset-4">
+                    <Text className="text-sm text-zinc-500 underline-offset-4 dark:text-zinc-400">
                       Forgot your password?
                     </Text>
                   </Pressable>
@@ -317,11 +328,11 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
                   autoCapitalize="none"
                   autoCorrect={false}
                   secureTextEntry
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-4 text-base text-white"
+                  className="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
                 />
               </View>
 
-              {error ? <Text className="text-sm text-red-400">{error}</Text> : null}
+              {error ? <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text> : null}
 
               <View className="gap-3">
                 <Pressable
@@ -329,21 +340,23 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
                   disabled={isLoading}
                   className={cn(
                     'flex-row items-center justify-center rounded-xl px-6 py-4',
-                    isLoading ? 'bg-zinc-700' : 'bg-white'
+                    isLoading ? 'bg-zinc-400 dark:bg-zinc-700' : 'bg-zinc-900 dark:bg-white'
                   )}
                 >
                   <Text
                     className={cn(
                       'mr-2 font-semibold',
-                      isLoading ? 'text-zinc-200' : 'text-black'
+                      isLoading ? 'text-zinc-100 dark:text-zinc-200' : 'text-white dark:text-black'
                     )}
                   >
                     {isLoading ? 'Signing in...' : 'Login'}
                   </Text>
-                  {!isLoading ? <ArrowRight size={18} color="#111827" /> : null}
+                  {!isLoading ? (
+                    <ArrowRight size={18} color={colorScheme === 'dark' ? '#000000' : '#ffffff'} />
+                  ) : null}
                 </Pressable>
 
-                <Text className="text-center text-xs uppercase tracking-[0.3em] text-zinc-500">
+                <Text className="text-center text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
                   continue with
                 </Text>
 
@@ -351,19 +364,19 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
                   onPress={handleEntraLogin}
                   disabled={isLoading2}
                   className={cn(
-                    'flex-row items-center justify-center rounded-xl border border-zinc-700 px-6 py-4',
-                    isLoading2 ? 'bg-zinc-900' : 'bg-transparent'
+                    'flex-row items-center justify-center rounded-xl border border-zinc-300 px-6 py-4 dark:border-zinc-700',
+                    isLoading2 ? 'bg-zinc-100 dark:bg-zinc-900' : 'bg-transparent'
                   )}
                 >
-                  <Text className="font-semibold text-white">
+                  <Text className="font-semibold text-zinc-900 dark:text-white">
                     {isLoading2 ? 'Signing in...' : 'Login with Entra ID'}
                   </Text>
                 </Pressable>
 
-                <Text className="text-center text-sm text-zinc-400">
+                <Text className="text-center text-sm text-zinc-500 dark:text-zinc-400">
                   Don&apos;t have an account?{' '}
                   <Text
-                    className="text-white underline underline-offset-4"
+                    className="text-zinc-900 underline underline-offset-4 dark:text-white"
                     onPress={() =>
                       Alert.alert('Request access', 'Submit a request for access.')
                     }

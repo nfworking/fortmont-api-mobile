@@ -19,13 +19,15 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from '@react-native-community/blur';
+import { StyleSheet } from 'react-native';
 import type { AuthResponse } from './LoginScreen';
 import { ProfilePage } from './ProfilePage';
 import { RealtimeDashboard } from './RealtimeDashboard';
 import { RegistryPage } from './RegistryPage';
 import { UsersPage } from './UsersPage';
-import { StyleSheet } from 'react-native';
-import ImmichGallery from "./ImmichGallery";
+import { ThemeToggle } from './ThemeToggle';
+import { useAppTheme } from '../lib/useAppTheme';
+
 type SamplePageProps = {
   auth: AuthResponse;
   onLogout: () => void;
@@ -40,11 +42,13 @@ function TabItem({
   icon,
   active,
   onPress,
+  isDark,
 }: {
   label: string;
   icon: (color: string, size: number) => React.ReactNode;
   active?: boolean;
   onPress: () => void;
+  isDark: boolean;
 }) {
   const scale = useSharedValue(1);
   const progress = useSharedValue(active ? 1 : 0);
@@ -62,10 +66,14 @@ function TabItem({
 
   // Active pill expands to show label; inactive collapses to icon only
   const pillStyle = useAnimatedStyle(() => ({
-    backgroundColor: `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.18])})`,
+    backgroundColor: isDark
+      ? `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.18])})`
+      : `rgba(0,0,0,${interpolate(progress.value, [0, 1], [0, 0.08])})`,
     paddingHorizontal: interpolate(progress.value, [0, 1], [10, 16]),
     borderWidth: interpolate(progress.value, [0, 1], [0, 0.8]),
-    borderColor: `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.25])})`,
+    borderColor: isDark
+      ? `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.25])})`
+      : `rgba(0,0,0,${interpolate(progress.value, [0, 1], [0, 0.12])})`,
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
@@ -74,7 +82,14 @@ function TabItem({
     marginLeft: interpolate(progress.value, [0, 1], [0, 6]),
   }));
 
-  const iconColor = active ? '#ffffff' : 'rgba(255,255,255,0.55)';
+  const iconColor = active
+    ? isDark
+      ? '#ffffff'
+      : '#18181b'
+    : isDark
+      ? 'rgba(255,255,255,0.55)'
+      : 'rgba(0,0,0,0.45)';
+  const labelColor = isDark ? '#ffffff' : '#18181b';
 
   return (
     <Animated.View style={pressStyle}>
@@ -93,7 +108,7 @@ scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.cubic) })
         >
           {icon(iconColor, 20)}
           <Animated.Text
-            style={[labelStyle, { color: '#ffffff', fontSize: 13, fontWeight: '600', overflow: 'hidden' }]}
+            style={[labelStyle, { color: labelColor, fontSize: 13, fontWeight: '600', overflow: 'hidden' }]}
             numberOfLines={1}
           >
             {label}
@@ -111,11 +126,15 @@ function ProfileDropdown({
   email,
   onOpenProfile,
   onLogout,
+  colors,
+  blurType,
 }: {
   name: string;
   email: string;
   onOpenProfile: () => void;
   onLogout: () => void;
+  colors: ReturnType<typeof useAppTheme>['colors'];
+  blurType: 'dark' | 'light';
 }) {
   return (
     <View
@@ -123,41 +142,38 @@ function ProfileDropdown({
         borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 0.8,
-        borderColor: 'rgba(255,255,255,0.15)',
+        borderColor: colors.borderStrong,
       }}
     >
-      {/* Blur sits behind everything as an absolute layer */}
       <BlurView
-        blurType="dark"
+        blurType={blurType}
         blurAmount={40}
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Glass tint over the blur */}
       <View
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: 'rgba(20,20,20,0.55)' },
+          { backgroundColor: colors.glassTint },
         ]}
       />
 
-      {/* Content on top */}
       <View>
         <View
           style={{
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderBottomWidth: 0.5,
-            borderBottomColor: 'rgba(255,255,255,0.1)',
+            borderBottomColor: colors.border,
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{name}</Text>
-          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{email}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{name}</Text>
+          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{email}</Text>
         </View>
 
         <Pressable
           onPress={onOpenProfile}
-          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+          android_ripple={{ color: colors.pillBg }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
         >
           <View
@@ -165,23 +181,23 @@ function ProfileDropdown({
               height: 32,
               width: 32,
               borderRadius: 16,
-              backgroundColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: colors.pillBg,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Settings size={14} color="rgba(255,255,255,0.7)" />
+            <Settings size={14} color={colors.textMuted} />
           </View>
-          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: '#fff' }}>
+          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: colors.text }}>
             Profile settings
           </Text>
         </Pressable>
 
-        <View style={{ height: 0.5, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+        <View style={{ height: 0.5, backgroundColor: colors.border }} />
 
         <Pressable
           onPress={onLogout}
-          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+          android_ripple={{ color: colors.pillBg }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
         >
           <View
@@ -214,6 +230,8 @@ function ProfileMenuButton({
   onToggle,
   onOpenProfile,
   onLogout,
+  colors,
+  blurType,
 }: {
   name: string;
   email: string;
@@ -223,6 +241,8 @@ function ProfileMenuButton({
   onToggle: () => void;
   onOpenProfile: () => void;
   onLogout: () => void;
+  colors: ReturnType<typeof useAppTheme>['colors'];
+  blurType: 'dark' | 'light';
 }) {
   const pressScale = useSharedValue(1);
   const menuProgress = useSharedValue(0);
@@ -266,28 +286,35 @@ function ProfileMenuButton({
             paddingVertical: 4,
             borderRadius: 999,
             borderWidth: 0.8,
-            borderColor: 'rgba(255,255,255,0.15)',
-            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderColor: colors.borderStrong,
+            backgroundColor: colors.pillBg,
           }}
         >
-          <View style={{ height: 32, width: 32, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.1)' }}>
+          <View style={{ height: 32, width: 32, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.pillBg }}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={{ height: 32, width: 32, borderRadius: 16 }} resizeMode="cover" />
             ) : (
               <View style={{ height: 32, width: 32, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{initial}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{initial}</Text>
               </View>
             )}
           </View>
           <Animated.View style={chevronStyle}>
-            <ChevronDown size={13} color="rgba(255,255,255,0.5)" />
+            <ChevronDown size={13} color={colors.textSecondary} />
           </Animated.View>
         </Pressable>
       </Animated.View>
 
       {isOpen && (
         <Animated.View style={[menuStyle, { position: 'absolute', right: 0, top: 48, zIndex: 50, width: 240 }]}>
-          <ProfileDropdown name={name} email={email} onOpenProfile={onOpenProfile} onLogout={onLogout} />
+          <ProfileDropdown
+            name={name}
+            email={email}
+            onOpenProfile={onOpenProfile}
+            onLogout={onLogout}
+            colors={colors}
+            blurType={blurType}
+          />
         </Animated.View>
       )}
     </View>
@@ -314,6 +341,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
   const [section, setSection] = useState<SectionKey>('dashboard');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useAppTheme();
   const profileInitial = auth.user.displayName.slice(0, 1).toUpperCase();
 
   const NAVBAR_HEIGHT = 64;
@@ -324,25 +352,24 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
     if (section === 'registry') return <RegistryPage />;
     if (section === 'immich') {
       return (
-     <Text>Hello</Text>
+     <Text className="text-zinc-900 dark:text-white">Hello</Text>
       );
     }
     if (section === 'lxc') {
       return (
-        <View style={{ flex: 1, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: '#09090b', paddingHorizontal: 24, paddingVertical: 24 }}>
-          <Text style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#52525b' }}>LXC</Text>
-          <Text style={{ fontSize: 28, fontWeight: '700', color: '#fff', marginTop: 8 }}>LXC Registry</Text>
-          <Text style={{ color: '#71717a', marginTop: 12 }}>This section is intentionally left empty for now.</Text>
+        <View style={{ flex: 1, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 24, paddingVertical: 24 }}>
+          <Text style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: colors.textSubtle }}>LXC</Text>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text, marginTop: 8 }}>LXC Registry</Text>
+          <Text style={{ color: colors.textMuted, marginTop: 12 }}>This section is intentionally left empty for now.</Text>
         </View>
       );
     }
     if (section === 'users') return <UsersPage />;
     return <RealtimeDashboard />;
-  }, [section, auth.user, auth.token]);
+  }, [section, auth.user, auth.token, colors]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* Top header */}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
         style={{
           flexDirection: 'row',
@@ -351,14 +378,15 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
           paddingBottom: 10,
           paddingHorizontal: 16,
           borderBottomWidth: 0.5,
-          borderBottomColor: 'rgba(255,255,255,0.08)',
-          backgroundColor: 'rgba(9,9,11,0.95)',
+          borderBottomColor: colors.border,
+          backgroundColor: colors.headerBg,
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Fortmont API</Text>
-          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Admin dashboard</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Fortmont API</Text>
+          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Admin dashboard</Text>
         </View>
+        <ThemeToggle className="mr-2" />
         <ProfileMenuButton
           name={auth.user.displayName}
           email={auth.user.email}
@@ -368,6 +396,8 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
           onToggle={() => setIsProfileMenuOpen((v) => !v)}
           onOpenProfile={() => { setSection('profile'); setIsProfileMenuOpen(false); }}
           onLogout={onLogout}
+          colors={colors}
+          blurType={colors.blurType}
         />
       </View>
 
@@ -400,32 +430,28 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
           height: NAVBAR_HEIGHT,
           borderRadius: 999,
           overflow: 'hidden',
-          // Soft shadow for lift
-          shadowColor: '#000',
+          shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.55,
+          shadowOpacity: isDark ? 0.55 : 0.2,
           shadowRadius: 20,
           elevation: 18,
         }}
       >
-        {/* Blur layer */}
         <BlurView
-          blurType="dark"
+          blurType={colors.blurType}
           blurAmount={50}
           style={{ position: 'absolute', inset: 0 }}
         />
-        {/* Glass tint + border */}
         <View
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundColor: 'rgba(255,255,255,0.07)',
+            backgroundColor: colors.glassBg,
             borderRadius: 999,
             borderWidth: 0.8,
-            borderColor: 'rgba(255,255,255,0.18)',
+            borderColor: colors.glassBorder,
           }}
         />
-        {/* Top specular sheen */}
         <View
           style={{
             position: 'absolute',
@@ -433,12 +459,11 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
             left: '15%',
             right: '15%',
             height: 1,
-            backgroundColor: 'rgba(255,255,255,0.35)',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.8)',
             borderRadius: 999,
           }}
         />
 
-        {/* Tab items */}
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', paddingHorizontal: 8 }}>
           {NAV_ITEMS.map((item) => (
             <TabItem
@@ -446,6 +471,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
               label={item.label}
               icon={item.icon}
               active={section === item.key}
+              isDark={isDark}
               onPress={() => {
                 setSection(item.key);
                 setIsProfileMenuOpen(false);

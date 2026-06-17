@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { RealtimeVmCard, type RealtimeVm } from './RealtimeVmCard';
 
 type RealtimeApiResponse = {
@@ -29,6 +30,8 @@ function formatBytes(bytes: number) {
 }
 
 export function RealtimeDashboard() {
+  const { colorScheme } = useColorScheme();
+  const spinnerColor = colorScheme === 'dark' ? '#ffffff' : '#18181b';
   const { width } = useWindowDimensions();
   const isCompact = width < 768;
   const isWide = width >= 960;
@@ -110,42 +113,42 @@ export function RealtimeDashboard() {
             onRefresh={() => {
               void loadRealtimeData(true);
             }}
-            tintColor="#ffffff"
-            colors={['#ffffff']}
+            tintColor={spinnerColor}
+            colors={[spinnerColor]}
           />
         }
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-4 overflow-hidden rounded-3xl border border-emerald-900/30 bg-zinc-950 px-5 py-5">
+        <View className="mb-4 overflow-hidden rounded-3xl border border-emerald-200 bg-white px-5 py-5 dark:border-emerald-900/30 dark:bg-zinc-950">
           <View className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-500/10" />
           <View className="absolute -bottom-10 -left-8 h-24 w-24 rounded-full bg-cyan-500/10" />
 
-          <Text className="text-xs uppercase tracking-[0.4em] text-emerald-300/80">Realtime monitor</Text>
-          <Text className="mt-2 text-3xl font-bold text-white">Live LXC status</Text>
-          <Text className="mt-3 max-w-2xl text-sm leading-5 text-zinc-400">
+          <Text className="text-xs uppercase tracking-[0.4em] text-emerald-700 dark:text-emerald-300/80">Realtime monitor</Text>
+          <Text className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">Live LXC status</Text>
+          <Text className="mt-3 max-w-2xl text-sm leading-5 text-zinc-500 dark:text-zinc-400">
            Welcome to your dashboard!
           </Text>
 
-          <View className="mt-4 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2.5 self-start">
-            <Text className="text-sm font-semibold text-zinc-200">{vms.length} machines</Text>
+          <View className="mt-4 self-start rounded-full border border-zinc-200 bg-zinc-100 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+            <Text className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{vms.length} machines</Text>
           </View>
         </View>
 
         {isLoading ? (
-          <View className="flex-1 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-10">
-            <ActivityIndicator color="#ffffff" />
-            <Text className="mt-4 text-sm text-zinc-400">Loading realtime data…</Text>
+          <View className="flex-1 items-center justify-center rounded-3xl border border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-950">
+            <ActivityIndicator color={spinnerColor} />
+            <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">Loading realtime data…</Text>
           </View>
         ) : error ? (
-          <View className="rounded-3xl border border-rose-900/60 bg-rose-950/40 px-5 py-5">
-            <Text className="text-base font-semibold text-rose-100">Could not load realtime data</Text>
-            <Text className="mt-2 text-sm leading-5 text-rose-200/80">{error}</Text>
+          <View className="rounded-3xl border border-rose-300 bg-rose-50 px-5 py-5 dark:border-rose-900/60 dark:bg-rose-950/40">
+            <Text className="text-base font-semibold text-rose-800 dark:text-rose-100">Could not load realtime data</Text>
+            <Text className="mt-2 text-sm leading-5 text-rose-700 dark:text-rose-200/80">{error}</Text>
           </View>
         ) : vms.length === 0 ? (
-          <View className="rounded-3xl border border-zinc-800 bg-zinc-950 px-5 py-5">
-            <Text className="text-base font-semibold text-white">No VMs returned</Text>
-            <Text className="mt-2 text-sm text-zinc-400">The API responded successfully, but it did not return any data.</Text>
+          <View className="rounded-3xl border border-zinc-200 bg-white px-5 py-5 dark:border-zinc-800 dark:bg-zinc-950">
+            <Text className="text-base font-semibold text-zinc-900 dark:text-white">No VMs returned</Text>
+            <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">The API responded successfully, but it did not return any data.</Text>
           </View>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -161,7 +164,7 @@ export function RealtimeDashboard() {
         )}
 
         {!isCompact && (
-          <Text className="mt-4 text-xs uppercase tracking-[0.3em] text-zinc-500">
+          <Text className="mt-4 text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
             Auto refreshes every 15 seconds
           </Text>
         )}

@@ -91,11 +91,11 @@ export function RealtimeVmCard({ vm, index, formatBytes }: RealtimeVmCardProps) 
 
   return (
     <Animated.View style={cardStyle}>
-      <View className="rounded-3xl border border-zinc-800 bg-zinc-950 px-4 py-4 shadow-black/30">
+      <View className="rounded-3xl border border-zinc-200 bg-white px-4 py-4 shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-black/30">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Text className="text-xs uppercase tracking-[0.35em] text-zinc-500">VMID {vm.vmid}</Text>
-            <Text numberOfLines={1} className="mt-2 text-xl font-bold text-white">
+            <Text className="text-xs uppercase tracking-[0.35em] text-zinc-400 dark:text-zinc-500">VMID {vm.vmid}</Text>
+            <Text numberOfLines={1} className="mt-2 text-xl font-bold text-zinc-900 dark:text-white">
               {vm.name}
             </Text>
           </View>
@@ -103,9 +103,9 @@ export function RealtimeVmCard({ vm, index, formatBytes }: RealtimeVmCardProps) 
           <StatusDot status={vm.status} />
         </View>
 
-        <View className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-          <Text className="text-xs uppercase tracking-[0.28em] text-zinc-500">Memory</Text>
-          <Text className="mt-1 text-2xl font-semibold text-white">{formatBytes(vm.mem)}</Text>
+        <View className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+          <Text className="text-xs uppercase tracking-[0.28em] text-zinc-400 dark:text-zinc-500">Memory</Text>
+          <Text className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-white">{formatBytes(vm.mem)}</Text>
         </View>
       </View>
     </Animated.View>

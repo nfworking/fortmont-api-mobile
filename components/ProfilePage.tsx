@@ -1,7 +1,9 @@
 import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2, Bell } from 'lucide-react-native';
 import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useColorScheme } from 'nativewind';
 import type { AuthResponse } from './LoginScreen';
+import { ThemeToggle } from './ThemeToggle';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -27,14 +29,14 @@ function InfoRow({
   icon: React.ReactNode;
 }) {
   return (
-    <View className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4">
+    <View className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900">
       <View className="flex-row items-start gap-3">
-        <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
+        <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800">
           {icon}
         </View>
         <View className="flex-1">
-          <Text className="text-xs uppercase tracking-[0.25em] text-zinc-500">{label}</Text>
-          <Text className="mt-2 text-base font-semibold text-white">{value?.trim() ? value : 'Not provided'}</Text>
+          <Text className="text-xs uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500">{label}</Text>
+          <Text className="mt-2 text-base font-semibold text-zinc-900 dark:text-white">{value?.trim() ? value : 'Not provided'}</Text>
         </View>
       </View>
     </View>
@@ -44,8 +46,8 @@ function InfoRow({
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <View className="space-y-2">
-      <Text className="text-sm font-semibold uppercase tracking-[0.35em] text-zinc-500">{title}</Text>
-      <Text className="text-sm text-zinc-400">{subtitle}</Text>
+      <Text className="text-sm font-semibold uppercase tracking-[0.35em] text-zinc-400 dark:text-zinc-500">{title}</Text>
+      <Text className="text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</Text>
     </View>
   );
 }
@@ -58,6 +60,8 @@ function formatValue(value: unknown) {
 }
 
 export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
+  const { colorScheme } = useColorScheme();
+  const iconColor = colorScheme === 'dark' ? '#ffffff' : '#18181b';
   const initials = (profile.displayName || '')
     .split(' ')
     .filter(Boolean)
@@ -83,9 +87,9 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
   }, [displayName, email, phone, role, profile]);
 
   const baseFields = [
-    { label: 'User ID', key: 'id', value: profile.id, icon: <BadgeInfo size={16} color="#ffffff" /> },
-    { label: 'Username', key: 'username', value: profile.username, icon: <User size={16} color="#ffffff" /> },
-    { label: 'Active', key: 'isActive', value: profile.isActive, icon: <ShieldCheck size={16} color="#ffffff" /> },
+    { label: 'User ID', key: 'id', value: profile.id, icon: <BadgeInfo size={16} color={iconColor} /> },
+    { label: 'Username', key: 'username', value: profile.username, icon: <User size={16} color={iconColor} /> },
+    { label: 'Active', key: 'isActive', value: profile.isActive, icon: <ShieldCheck size={16} color={iconColor} /> },
   ];
 
   const [editing, setEditing] = useState<Record<string, boolean>>({});
@@ -196,24 +200,24 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
   }
 
   return (
-    <View className="flex-1 rounded-3xl border border-zinc-800 bg-zinc-950 px-4 py-4 sm:px-6 sm:py-6">
-      <View className="overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-950">
-        <View className="border-b border-zinc-800 px-5 py-5">
+    <View className="flex-1 rounded-3xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6 sm:py-6">
+      <View className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <View className="border-b border-zinc-200 px-5 py-5 dark:border-zinc-800">
           <View className="flex-row flex-wrap items-center gap-4">
-            <View className="h-20 w-20 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900">
+            <View className="h-20 w-20 items-center justify-center rounded-full border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
               {profile.avatarUrl ? (
-                <Image source={{ uri: profile.avatarUrl }} className="h-16 w-16 rounded-full bg-zinc-800" resizeMode="cover" />
+                <Image source={{ uri: profile.avatarUrl }} className="h-16 w-16 rounded-full bg-zinc-200 dark:bg-zinc-800" resizeMode="cover" />
               ) : (
-                <View className="h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
-                  <Text className="text-lg font-bold text-white">{initials || '?'}</Text>
+                <View className="h-16 w-16 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800">
+                  <Text className="text-lg font-bold text-zinc-900 dark:text-white">{initials || '?'}</Text>
                 </View>
               )}
             </View>
 
             <View className="flex-1 min-w-[220px]">
-              <Text className="text-sm uppercase tracking-[0.3em] text-zinc-500">Account profile</Text>
-              <Text className="mt-2 text-3xl font-bold text-white">{profile.displayName}</Text>
-              <Text className="mt-2 text-zinc-400">Edit your profile here</Text>
+              <Text className="text-sm uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">Account profile</Text>
+              <Text className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{profile.displayName}</Text>
+              <Text className="mt-2 text-zinc-500 dark:text-zinc-400">Edit your profile here</Text>
             </View>
           </View>
         </View>
@@ -229,17 +233,17 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
             ))}
 
             {[
-              { label: 'Display name', key: 'displayName', value: displayName, icon: <UserCircle2 size={16} color="#ffffff" /> },
-              { label: 'Email', key: 'email', value: email, icon: <Mail size={16} color="#ffffff" /> },
-              { label: 'Phone', key: 'phone', value: phone, icon: <BadgeInfo size={16} color="#ffffff" /> },
-              { label: 'Role', key: 'role', value: role, icon: <ShieldCheck size={16} color="#ffffff" /> },
+              { label: 'Display name', key: 'displayName', value: displayName, icon: <UserCircle2 size={16} color={iconColor} /> },
+              { label: 'Email', key: 'email', value: email, icon: <Mail size={16} color={iconColor} /> },
+              { label: 'Phone', key: 'phone', value: phone, icon: <BadgeInfo size={16} color={iconColor} /> },
+              { label: 'Role', key: 'role', value: role, icon: <ShieldCheck size={16} color={iconColor} /> },
             ].map((field) => (
               <View key={field.key} className="min-w-[180px] flex-1">
-                <View className="rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3">
+                <View className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                   <View className="flex-row items-start gap-3">
-                    <View className="mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-zinc-800">{field.icon}</View>
+                    <View className="mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800">{field.icon}</View>
                     <View className="flex-1">
-                      <Text className="text-xs uppercase tracking-[0.25em] text-zinc-500">{field.label}</Text>
+                      <Text className="text-xs uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500">{field.label}</Text>
                       {editing[field.key] ? (
                         <TextInput
                           value={String(field.value ?? '')}
@@ -251,10 +255,10 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
                           }}
                           placeholder={String(field.value ?? '')}
                           placeholderTextColor="#71717a"
-                          className="mt-2 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-white text-base"
+                          className="mt-2 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
                         />
                       ) : (
-                        <Text className="mt-2 text-sm font-semibold text-white">{String(field.value ?? '') || 'Not provided'}</Text>
+                        <Text className="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">{String(field.value ?? '') || 'Not provided'}</Text>
                       )}
                     </View>
                     <Pressable onPress={() => toggleEdit(field.key)} className="ml-2 items-center justify-center rounded-full p-2">
@@ -275,30 +279,32 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
               <View className="mt-5 flex-row flex-wrap gap-4">
                 {extraFields.map((field) => (
                   <View key={field.label} className="min-w-[220px] flex-1">
-                    <InfoRow label={field.label} value={field.value} icon={<BadgeInfo size={18} color="#ffffff" />} />
+                    <InfoRow label={field.label} value={field.value} icon={<BadgeInfo size={18} color={iconColor} />} />
                   </View>
                 ))}
               </View>
             </>
           ) : null}
 
-          <View className="mt-8 rounded-2xl border border-dashed border-zinc-700 px-4 py-4">
-            <Text className="text-sm font-semibold text-white">Settings area</Text>
-            <Text className="mt-2 text-sm text-zinc-400 mb-4">
+          <View className="mt-8 rounded-2xl border border-dashed border-zinc-300 px-4 py-4 dark:border-zinc-700">
+            <Text className="text-sm font-semibold text-zinc-900 dark:text-white">Settings area</Text>
+            <Text className="mt-2 mb-4 text-sm text-zinc-500 dark:text-zinc-400">
               Manage your application alert preferences directly from your profile dashboard.
             </Text>
+
+            <ThemeToggle variant="segmented" className="mb-4" />
             
             <Pressable
               onPress={handleEnableNotifications}
               disabled={isEnablingPush}
-              className="flex-row items-center justify-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 active:bg-zinc-700 disabled:opacity-60 px-4 py-3"
+              className="flex-row items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-4 py-3 active:bg-zinc-200 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:active:bg-zinc-700"
             >
               {isEnablingPush ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={iconColor} size="small" />
               ) : (
                 <>
-                  <Bell size={16} color="#ffffff" />
-                  <Text className="text-sm font-medium text-white">Enable Notifications</Text>
+                  <Bell size={16} color={iconColor} />
+                  <Text className="text-sm font-medium text-zinc-900 dark:text-white">Enable Notifications</Text>
                 </>
               )}
             </Pressable>
