@@ -1,12 +1,12 @@
-import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2, Bell } from 'lucide-react-native';
-import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { ImageIcon, Mail, ShieldCheck, User, UserCircle2, BadgeInfo, Edit2, Bell, Check, X, Camera } from 'lucide-react-native';
+import { Image, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
 import type { AuthResponse } from './LoginScreen';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import your notification setup function
-import { setupPushNotifications } from '../lib/useNotifications'; // Adjust this path to match your file structure
+import { setupPushNotifications } from '../lib/useNotifications';
 
 type ProfilePageProps = {
   profile: AuthResponse['user'];
@@ -15,49 +15,10 @@ type ProfilePageProps = {
     value?: string | null;
   }>;
   token?: string;
+  onProfileUpdate?: () => void; // Added to trigger parent refetch/sync
 };
 
-function InfoRow({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value?: string | null;
-  icon: React.ReactNode;
-}) {
-  return (
-    <View className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4">
-      <View className="flex-row items-start gap-3">
-        <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-          {icon}
-        </View>
-        <View className="flex-1">
-          <Text className="text-xs uppercase tracking-[0.25em] text-zinc-500">{label}</Text>
-          <Text className="mt-2 text-base font-semibold text-white">{value?.trim() ? value : 'Not provided'}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <View className="space-y-2">
-      <Text className="text-sm font-semibold uppercase tracking-[0.35em] text-zinc-500">{title}</Text>
-      <Text className="text-sm text-zinc-400">{subtitle}</Text>
-    </View>
-  );
-}
-
-function formatValue(value: unknown) {
-  if (value === null) return 'Not provided';
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  return String(value);
-}
-
-export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
+export function ProfilePage({ profile, extraFields, token, onProfileUpdate }: ProfilePageProps) {
   const initials = (profile.displayName || '')
     .split(' ')
     .filter(Boolean)
@@ -65,14 +26,26 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
     .map((part) => part[0]?.toUpperCase())
     .join('');
 
+  // Local state inputs
   const [displayName, setDisplayName] = useState(profile.displayName ?? '');
   const [email, setEmail] = useState(profile.email ?? '');
   const [phone, setPhone] = useState(profile.phone ?? '');
   const [role, setRole] = useState(profile.role ?? '');
+  
   const [isSaving, setIsSaving] = useState(false);
   const [isEnablingPush, setIsEnablingPush] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
 
+  // Keep state in sync if the profile prop updates from a server refetch
+  useEffect(() => {
+    setDisplayName(profile.displayName ?? '');
+    setEmail(profile.email ?? '');
+    setPhone(profile.phone ?? '');
+    setRole(profile.role ?? '');
+  }, [profile]);
+
+  // Track if any changes have been made locally
   useEffect(() => {
     setHasChanges(
       displayName !== (profile.displayName ?? '') ||
@@ -82,72 +55,51 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
     );
   }, [displayName, email, phone, role, profile]);
 
-  const baseFields = [
-    { label: 'User ID', key: 'id', value: profile.id, icon: <BadgeInfo size={16} color="#ffffff" /> },
-    { label: 'Username', key: 'username', value: profile.username, icon: <User size={16} color="#ffffff" /> },
-    { label: 'Active', key: 'isActive', value: profile.isActive, icon: <ShieldCheck size={16} color="#ffffff" /> },
-  ];
-
-  const [editing, setEditing] = useState<Record<string, boolean>>({});
-
-  const toggleEdit = (key: string) => {
-    setEditing((s) => ({ ...s, [key]: !s[key] }));
-  };
-
   async function handleEnableNotifications() {
-  if (!token) {
-    Alert.alert('Missing token', 'Cannot register device token without an auth token.');
-    return;
-  }
-
-  const alreadySetup = await AsyncStorage.getItem(`push_setup_done_${profile.id}`);
-  if (alreadySetup === 'true') {
-    Alert.alert('Already enabled', `Notifications are already set up on this device for ${profile.displayName || profile.username}.`);
-    return;
-  }
-
-  setIsEnablingPush(true);
-
-  try {
-    const result = await setupPushNotifications();
-
-    if (!result.success) {
-      Alert.alert(
-        result.reason === 'permission_denied'
-          ? 'Permission Denied'
-          : 'Token Failed',
-        'Could not enable notifications.'
-      );
+    if (!token) {
+      Alert.alert('Missing token', 'Cannot register device token without an auth token.');
       return;
     }
 
-    const res = await fetch(`https://api.fortmont.me/api/devices/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        token: result.token,
-        platform: Platform.OS,
-        deviceVersion: Device.osVersion,
-        deviceName: Device.deviceName,
-        deviceModelName: Device.modelName,
-        deviceBrand: Device.brand,
-      }),
-    });
+    const alreadySetup = await AsyncStorage.getItem(`push_setup_done_${profile.id}`);
+    if (alreadySetup === 'true') {
+      Alert.alert('Already enabled', `Notifications are already set up on this device for ${profile.displayName || profile.username}.`);
+      return;
+    }
 
-    if (!res.ok) throw new Error(await res.text());
+    setIsEnablingPush(true);
+    try {
+      const result = await setupPushNotifications();
+      if (!result.success) {
+        Alert.alert(result.reason === 'permission_denied' ? 'Permission Denied' : 'Token Failed', 'Could not enable notifications.');
+        return;
+      }
 
-    await AsyncStorage.setItem(`push_setup_done_${profile.id}`, 'true');
+      const res = await fetch(`https://api.fortmont.me/api/devices/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          token: result.token,
+          platform: Platform.OS,
+          deviceVersion: Device.osVersion,
+          deviceName: Device.deviceName,
+          deviceModelName: Device.modelName,
+          deviceBrand: Device.brand,
+        }),
+      });
 
-    Alert.alert('Success', 'Notifications enabled');
-  } catch (err: any) {
-    Alert.alert('Setup Error', err?.message ?? String(err));
-  } finally {
-    setIsEnablingPush(false);
+      if (!res.ok) throw new Error(await res.text());
+      await AsyncStorage.setItem(`push_setup_done_${profile.id}`, 'true');
+      Alert.alert('Success', 'Notifications enabled');
+    } catch (err: any) {
+      Alert.alert('Setup Error', err?.message ?? String(err));
+    } finally {
+      setIsEnablingPush(false);
+    }
   }
-}
 
   async function handleSave() {
     if (!token) {
@@ -187,7 +139,8 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
       }
 
       Alert.alert('Success', 'Profile updated successfully');
-      setHasChanges(false);
+      setEditingField(null);
+      if (onProfileUpdate) onProfileUpdate(); // Notifies parent to pull fresh API data
     } catch (err: any) {
       Alert.alert('Update failed', err?.message ?? String(err));
     } finally {
@@ -195,132 +148,179 @@ export function ProfilePage({ profile, extraFields, token }: ProfilePageProps) {
     }
   }
 
+  const mutableFields = [
+    { label: 'Display name', key: 'displayName', value: displayName, setter: setDisplayName, icon: <UserCircle2 size={20} color="#a1a1aa" /> },
+    { label: 'Email', key: 'email', value: email, setter: setEmail, icon: <Mail size={20} color="#a1a1aa" /> },
+    { label: 'Phone', key: 'phone', value: phone, setter: setPhone, icon: <BadgeInfo size={20} color="#a1a1aa" /> },
+    { label: 'Role', key: 'role', value: role, setter: setRole, icon: <ShieldCheck size={20} color="#a1a1aa" /> },
+  ];
+
   return (
-    <View className="flex-1 rounded-3xl border border-zinc-800 bg-zinc-950 px-4 py-4 sm:px-6 sm:py-6">
-      <View className="overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-950">
-        <View className="border-b border-zinc-800 px-5 py-5">
-          <View className="flex-row flex-wrap items-center gap-4">
-            <View className="h-20 w-20 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900">
+    <ScrollView className="flex-1 bg-zinc-950">
+      <View className="px-4 py-6 sm:px-6">
+        
+        {/* Google-Style Centered Header Section */}
+        <View className="items-center justify-center pt-4 pb-8">
+          <View className="relative">
+            <View className="h-24 w-24 items-center justify-center rounded-full border-2 border-zinc-800 bg-zinc-900 shadow-xl">
               {profile.avatarUrl ? (
-                <Image source={{ uri: profile.avatarUrl }} className="h-16 w-16 rounded-full bg-zinc-800" resizeMode="cover" />
+                <Image source={{ uri: profile.avatarUrl }} className="h-full w-full rounded-full" resizeMode="cover" />
               ) : (
-                <View className="h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
-                  <Text className="text-lg font-bold text-white">{initials || '?'}</Text>
-                </View>
+                <Text className="text-3xl font-semibold text-white">{initials || '?'}</Text>
               )}
             </View>
-
-            <View className="flex-1 min-w-[220px]">
-              <Text className="text-sm uppercase tracking-[0.3em] text-zinc-500">Account profile</Text>
-              <Text className="mt-2 text-3xl font-bold text-white">{profile.displayName}</Text>
-              <Text className="mt-2 text-zinc-400">Edit your profile here</Text>
-            </View>
+            <Pressable className="absolute bottom-0 right-0 rounded-full bg-zinc-800 p-2 border border-zinc-700 active:bg-zinc-700 shadow-md">
+              <Camera size={16} color="#ffffff" />
+            </Pressable>
           </View>
+          
+          <Text className="mt-4 text-2xl font-semibold text-white tracking-wide">{profile.displayName || 'Account Profile'}</Text>
+          <Text className="mt-1 text-sm text-zinc-500 font-medium">{profile.email || 'Manage your personal info'}</Text>
         </View>
 
-        <View className="px-5 py-5">
-          <SectionHeading title="Your details" subtitle="Edit your information below" />
+        {/* Info & Settings Section Card */}
+        <View className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-md">
+          <View className="border-b border-zinc-800 px-4 py-4">
+            <Text className="text-base font-semibold text-white">Basic info</Text>
+            <Text className="text-xs text-zinc-500 mt-0.5">Some info may be visible to other users using the platform.</Text>
+          </View>
 
-          <View className="mt-4 flex-row flex-wrap gap-3">
-            {baseFields.map((field) => (
-              <View key={field.key} className="min-w-[180px] flex-1">
-                <InfoRow label={field.label} value={formatValue(field.value)} icon={field.icon} />
-              </View>
-            ))}
+          {/* System Read-only Metadata */}
+          <View className="border-b border-zinc-800/60 px-4 py-2 bg-zinc-900/20">
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-xs font-medium text-zinc-500 uppercase tracking-wider">User ID</Text>
+              <Text className="text-sm font-mono text-zinc-400 select-all">{profile.id}</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Username</Text>
+              <Text className="text-sm font-medium text-zinc-300">@{profile.username}</Text>
+            </View>
+          </View>
 
-            {[
-              { label: 'Display name', key: 'displayName', value: displayName, icon: <UserCircle2 size={16} color="#ffffff" /> },
-              { label: 'Email', key: 'email', value: email, icon: <Mail size={16} color="#ffffff" /> },
-              { label: 'Phone', key: 'phone', value: phone, icon: <BadgeInfo size={16} color="#ffffff" /> },
-              { label: 'Role', key: 'role', value: role, icon: <ShieldCheck size={16} color="#ffffff" /> },
-            ].map((field) => (
-              <View key={field.key} className="min-w-[180px] flex-1">
-                <View className="rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3">
-                  <View className="flex-row items-start gap-3">
-                    <View className="mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-zinc-800">{field.icon}</View>
-                    <View className="flex-1">
-                      <Text className="text-xs uppercase tracking-[0.25em] text-zinc-500">{field.label}</Text>
-                      {editing[field.key] ? (
-                        <TextInput
-                          value={String(field.value ?? '')}
-                          onChangeText={(text) => {
-                            if (field.key === 'displayName') setDisplayName(text);
-                            if (field.key === 'email') setEmail(text);
-                            if (field.key === 'phone') setPhone(text);
-                            if (field.key === 'role') setRole(text);
-                          }}
-                          placeholder={String(field.value ?? '')}
-                          placeholderTextColor="#71717a"
-                          className="mt-2 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-white text-base"
-                        />
-                      ) : (
-                        <Text className="mt-2 text-sm font-semibold text-white">{String(field.value ?? '') || 'Not provided'}</Text>
-                      )}
-                    </View>
-                    <Pressable onPress={() => toggleEdit(field.key)} className="ml-2 items-center justify-center rounded-full p-2">
-                      <Edit2 size={14} color="#a1a1aa" />
-                    </Pressable>
-                  </View>
+          {/* Dynamic/Editable Fields List */}
+          {mutableFields.map((field, index) => {
+            const isEditing = editingField === field.key;
+            return (
+              <View 
+                key={field.key} 
+                className={`flex-row items-center border-b border-zinc-800/80 px-4 py-4 ${index === mutableFields.length - 1 ? 'border-b-0' : ''}`}
+              >
+                <View className="mr-4 text-zinc-400">{field.icon}</View>
+                
+                <View className="flex-1">
+                  <Text className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{field.label}</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={String(field.value ?? '')}
+                      onChangeText={field.setter}
+                      autoFocus
+                      className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-base font-normal"
+                    />
+                  ) : (
+                    <Text className="mt-1 text-base font-medium text-white">
+                      {String(field.value ?? '').trim() || 'Not provided'}
+                    </Text>
+                  )}
                 </View>
+
+                {/* Direct inline editing toggles */}
+                <View className="ml-2 flex-row gap-1">
+                  {isEditing ? (
+                    <>
+                      <Pressable 
+                        onPress={() => setEditingField(null)} 
+                        className="rounded-full bg-zinc-800 p-2 border border-zinc-700"
+                      >
+                        <X size={16} color="#ef4444" />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <Pressable 
+                      onPress={() => setEditingField(field.key)} 
+                      className="rounded-full p-2 active:bg-zinc-800"
+                    >
+                      <Edit2 size={16} color="#71717a" />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Additional Fields Block */}
+        {extraFields && extraFields.length > 0 && (
+          <View className="mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
+            <View className="border-b border-zinc-800 px-4 py-4">
+              <Text className="text-base font-semibold text-white">Additional metadata</Text>
+            </View>
+            {extraFields.map((field, idx) => (
+              <View 
+                key={field.label} 
+                className={`flex-row justify-between px-4 py-4 border-b border-zinc-800/60 ${idx === extraFields.length - 1 ? 'border-b-0' : ''}`}
+              >
+                <Text className="text-sm font-medium text-zinc-400">{field.label}</Text>
+                <Text className="text-sm font-semibold text-white">{field.value || 'Not provided'}</Text>
               </View>
             ))}
           </View>
+        )}
 
-          {extraFields && extraFields.length > 0 ? (
-            <>
-              <View className="mt-8">
-                <SectionHeading title="Additional fields" subtitle="Future API values can be passed in here without changing the layout." />
-              </View>
+        {/* Alert Preferences & Tools Area */}
+        <View className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <Text className="text-base font-semibold text-white">Privacy & notifications</Text>
+          <Text className="mt-1 text-xs text-zinc-500">
+            Manage how device alert tokens are provisioned down directly to your client application.
+          </Text>
+          
+          <Pressable
+            onPress={handleEnableNotifications}
+            disabled={isEnablingPush}
+            className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 active:bg-zinc-700 disabled:opacity-60 py-3.5"
+          >
+            {isEnablingPush ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Bell size={16} color="#ffffff" />
+                <Text className="text-sm font-medium text-white">Enable Device Notifications</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
 
-              <View className="mt-5 flex-row flex-wrap gap-4">
-                {extraFields.map((field) => (
-                  <View key={field.label} className="min-w-[220px] flex-1">
-                    <InfoRow label={field.label} value={field.value} icon={<BadgeInfo size={18} color="#ffffff" />} />
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          <View className="mt-8 rounded-2xl border border-dashed border-zinc-700 px-4 py-4">
-            <Text className="text-sm font-semibold text-white">Settings area</Text>
-            <Text className="mt-2 text-sm text-zinc-400 mb-4">
-              Manage your application alert preferences directly from your profile dashboard.
-            </Text>
-            
+        {/* Sticky Action Bar for Global Changes */}
+        {hasChanges && (
+          <View className="mt-6 flex-row gap-3">
             <Pressable
-              onPress={handleEnableNotifications}
-              disabled={isEnablingPush}
-              className="flex-row items-center justify-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 active:bg-zinc-700 disabled:opacity-60 px-4 py-3"
+              onPress={() => {
+                setDisplayName(profile.displayName ?? '');
+                setEmail(profile.email ?? '');
+                setPhone(profile.phone ?? '');
+                setRole(profile.role ?? '');
+                setEditingField(null);
+              }}
+              className="flex-1 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 py-3"
             >
-              {isEnablingPush ? (
+              <Text className="text-sm font-semibold text-zinc-400">Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              disabled={isSaving}
+              className="flex-2 flex-row items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 shadow-lg active:bg-emerald-700 disabled:opacity-50"
+            >
+              {isSaving ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Bell size={16} color="#ffffff" />
-                  <Text className="text-sm font-medium text-white">Enable Notifications</Text>
+                  <Check size={16} color="#fff" />
+                  <Text className="text-sm font-semibold text-white">Save Changes</Text>
                 </>
               )}
             </Pressable>
           </View>
-
-          {hasChanges ? (
-            <View className="mt-6 flex-row justify-end">
-              <Pressable
-                onPress={handleSave}
-                className="rounded-full bg-emerald-600 px-4 py-2"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-sm font-semibold text-white">Save changes</Text>
-                )}
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
+        )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
