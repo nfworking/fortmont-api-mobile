@@ -7,7 +7,6 @@ import {
   View,
 } from 'react-native';
 import { useColorScheme } from 'nativewind';
-import { FORTMONT_API_KEY } from '@env';
 
 type User = {
   id: string;
@@ -25,7 +24,7 @@ export function UsersPage() {
   const { width } = useWindowDimensions();
   const isCompact = width < 768;
 
-  const apiKey = FORTMONT_API_KEY;
+
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -34,9 +33,7 @@ export function UsersPage() {
 
       try {
         const response = await fetch('https://api.fortmont.me/api/users', {
-          headers: {
-            'x-api-key': apiKey,
-          },
+          
         });
 
         const data = (await response.json()) as User[] | { data?: User[] };

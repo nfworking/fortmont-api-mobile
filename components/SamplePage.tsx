@@ -23,7 +23,6 @@ import { StyleSheet } from 'react-native';
 import type { AuthResponse } from './LoginScreen';
 import { ProfilePage } from './ProfilePage';
 import { RealtimeDashboard } from './RealtimeDashboard';
-import { RegistryPage } from './RegistryPage';
 import { UsersPage } from './UsersPage';
 import { ThemeToggle } from './ThemeToggle';
 import { useAppTheme } from '../lib/useAppTheme';
@@ -329,10 +328,7 @@ const NAV_ITEMS: {
   icon: (color: string, size: number) => React.ReactNode;
 }[] = [
   { key: 'dashboard', label: 'Home',     icon: (c, s) => <LayoutDashboard size={s} color={c} /> },
-  { key: 'registry',  label: 'Registry', icon: (c, s) => <Database        size={s} color={c} /> },
-  { key: 'lxc',       label: 'LXC',      icon: (c, s) => <ServerCog       size={s} color={c} /> },
   { key: 'users',     label: 'Users',    icon: (c, s) => <Users           size={s} color={c} /> },
-  { key: 'immich',    label: 'Immich',   icon: (c, s) => <Users           size={s} color={c} /> },
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -349,21 +345,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
 
   const content = useMemo(() => {
     if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
-    if (section === 'registry') return <RegistryPage />;
-    if (section === 'immich') {
-      return (
-     <Text className="text-zinc-900 dark:text-white">Hello</Text>
-      );
-    }
-    if (section === 'lxc') {
-      return (
-        <View style={{ flex: 1, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 24, paddingVertical: 24 }}>
-          <Text style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: colors.textSubtle }}>LXC</Text>
-          <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text, marginTop: 8 }}>LXC Registry</Text>
-          <Text style={{ color: colors.textMuted, marginTop: 12 }}>This section is intentionally left empty for now.</Text>
-        </View>
-      );
-    }
+    
     if (section === 'users') return <UsersPage />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token, colors]);
