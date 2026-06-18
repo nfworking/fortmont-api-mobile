@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fortmont",
     "slug": "fortmont-api-mobile",
-    "version": "1.0.0",
+    "version": "1.9.5",
 
     "orientation": "portrait",
     "icon": "./assets/fortmont_icon.png",

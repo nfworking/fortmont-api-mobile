@@ -1,37 +1,58 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Text, View, PermissionsAndroid } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import messaging from '@react-native-firebase/messaging'; // CRUCIAL IMPORT
+import { useColorScheme } from 'nativewind';
+import messaging from '@react-native-firebase/messaging';
 import './global.css';
 import { LoginScreen, type AuthResponse } from './components/LoginScreen';
 import { SamplePage } from './components/SamplePage';
 import { clearAuthSession, loadAuthSession, saveAuthSession } from './lib/authStorage';
+import { ThemePreferenceProvider, useThemePreference } from './lib/useThemePreference';
 
-// ==========================================
-// 1. REGISTER BACKGROUND HANDLER (TOP LEVEL)
-// ==========================================
-// This MUST sit outside the App component so Android Headless JS can invoke it 
-// when the app process is completely dead or minimized.
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
   console.log('Message handled in the background!', remoteMessage);
-  // Perform background actions here (e.g., writing to local storage)
 });
 
-export default function App() {
+function AppShell({
+  auth,
+  isHydrating,
+  onAuthenticated,
+  onLogout,
+}: {
+  auth: AuthResponse | null;
+  isHydrating: boolean;
+  onAuthenticated: (session: AuthResponse) => void;
+  onLogout: () => void;
+}) {
+  const { colorScheme } = useColorScheme();
+
+  if (isHydrating) {
+    return (
+      <View className="flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
+        <ActivityIndicator color={colorScheme === 'dark' ? '#ffffff' : '#18181b'} />
+        <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">Restoring session...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-zinc-50 dark:bg-black">
+      {auth ? (
+        <SamplePage auth={auth} onLogout={onLogout} />
+      ) : (
+        <LoginScreen onAuthenticated={onAuthenticated} />
+      )}
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    </View>
+  );
+}
+
+function AppContent() {
   const [auth, setAuth] = useState<AuthResponse | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
+  const { isReady: isThemeReady } = useThemePreference();
 
-  // ==========================================
-  // 2. NOTIFICATION PERMISSIONS & FOREGROUND LISTENERS
-  // ==========================================
-  
-
-
-
-  // ========================================== 
-  // EXISTING AUTH HYDRATION
-  // ==========================================
   useEffect(() => {
     let mounted = true;
 
@@ -61,27 +82,22 @@ export default function App() {
     await clearAuthSession();
   };
 
-  if (isHydrating) {
-    return (
-      <SafeAreaProvider>
-        <View className="light flex-1 items-center justify-center ">
-          <ActivityIndicator color="#ffffff" />
-          <Text className="mt-4 text-sm text-zinc-400">Restoring session...</Text>
-        </View>
-      </SafeAreaProvider>
-    );
-  }
+  return (
+    <AppShell
+      auth={auth}
+      isHydrating={isHydrating || !isThemeReady}
+      onAuthenticated={handleAuthenticated}
+      onLogout={handleLogout}
+    />
+  );
+}
 
+export default function App() {
   return (
     <SafeAreaProvider>
-      <View className="light flex-1 ">
-        {auth ? (
-          <SamplePage auth={auth} onLogout={handleLogout} />
-        ) : (
-          <LoginScreen onAuthenticated={handleAuthenticated} />
-        )}
-        <StatusBar style="light" />
-      </View>
+      <ThemePreferenceProvider>
+        <AppContent />
+      </ThemePreferenceProvider>
     </SafeAreaProvider>
   );
 }

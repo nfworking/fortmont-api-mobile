@@ -14,6 +14,11 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
+import { useColorScheme } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemeToggle } from './ThemeToggle';
+import { ImageBackground } from 'react-native';
+import {BlurView} from 'expo-blur';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -53,6 +58,8 @@ function cn(...values: (string | false | null | undefined)[]) {
 }
 
 export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -259,123 +266,144 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white dark:bg-black"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  className="flex-1"
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+>
+  <ImageBackground
+    source={{ uri: 'https://images.unsplash.com/photo-1780592657995-60f814efa4a8?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }}
+    resizeMode="cover"
+    className="flex-1"
+    style={{ flex: 1, width: '100%', height: '100%' }}
+    // 👇 1. This blurs the entire background image
+    blurRadius={2} // Adjust the blur radius as needed (0 for no blur, higher for more blur)
+  >
+    <View
+      className="absolute right-4 z-10"
+      style={{ top: insets.top + 12 }}
     >
-      <ScrollView
-        className="flex-1 px-6"
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View className="flex-1 justify-center py-16">
-          <View className="mx-auto w-full max-w-xl rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-8">
-            <View className="items-center gap-2 text-center mb-6">
-              <View className="mb-2 h-16 w-16 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900">
-                <Text className="text-lg font-bold text-white">L</Text>
+      <ThemeToggle />
+    </View>
+    
+    <ScrollView
+      className="flex-1 px-6"
+      contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="flex-1 justify-center py-16">
+        
+        {/* 👇 2. Changed this from a View to a BlurView for the frosted-glass login box */}
+        <BlurView 
+          intensity={60} // Controls the strength of the login box blur
+          tint={colorScheme === 'dark' ? 'dark' : 'light'} // Dynamic tint matching system theme
+          // Note: Added 'overflow-hidden' so the blur doesn't bleed out of the rounded corners
+          className="mx-auto w-full max-w-xl rounded-3xl border border-zinc-200/50 px-6 py-8 dark:border-zinc-800/50 overflow-hidden"
+        >
+          <View className="items-center gap-2 text-center mb-6">
+            <Text className="text-2xl font-bold text-zinc-900 dark:text-white">Login to your account</Text>
+            <Text className="text-sm text-center text-zinc-500 dark:text-zinc-400">
+              Enter your username below to login to your account
+            </Text>
+          </View>
+
+          <View className="gap-5">
+            <View className="gap-2">
+              <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Username</Text>
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder="your.username"
+                placeholderTextColor="#71717a"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="rounded-xl border border-zinc-300 bg-white/70 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-white"
+              />
+            </View>
+
+            <View className="gap-2">
+              <View className="flex-row items-center">
+                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Password</Text>
+                <Pressable
+                  onPress={() =>
+                    Alert.alert('Forgot password', 'Use the support flow for password resets.')
+                  }
+                  className="ml-auto"
+                >
+                  <Text className="text-sm text-zinc-500 underline-offset-4 dark:text-zinc-400">
+                    Forgot your password?
+                  </Text>
+                </Pressable>
               </View>
-              <Text className="text-2xl font-bold text-white">Login to your account</Text>
-              <Text className="text-sm text-center text-zinc-400">
-                Enter your username below to login to your account
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                placeholderTextColor="#71717a"
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+                className="rounded-xl border border-zinc-300 bg-white/70 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-white"
+              />
+            </View>
+
+            {error ? <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text> : null}
+
+            <View className="gap-3">
+              <Pressable
+                onPress={handleLogin}
+                disabled={isLoading}
+                className={cn(
+                  'flex-row items-center justify-center rounded-xl px-6 py-4',
+                  isLoading ? 'bg-zinc-400 dark:bg-zinc-700' : 'bg-zinc-900 dark:bg-white'
+                )}
+              >
+                <Text
+                  className={cn(
+                    'mr-2 font-semibold',
+                    isLoading ? 'text-zinc-100 dark:text-zinc-200' : 'text-white dark:text-black'
+                  )}
+                >
+                  {isLoading ? 'Signing in...' : 'Login'}
+                </Text>
+                {!isLoading ? (
+                  <ArrowRight size={18} color={colorScheme === 'dark' ? '#000000' : '#ffffff'} />
+                ) : null}
+              </Pressable>
+
+              <Text className="text-center text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
+                continue with
+              </Text>
+
+              <Pressable
+                onPress={handleEntraLogin}
+                disabled={isLoading2}
+                className={cn(
+                  'flex-row items-center justify-center rounded-xl border border-zinc-300 px-6 py-4 dark:border-zinc-700',
+                  isLoading2 ? 'bg-zinc-100 dark:bg-zinc-900' : 'bg-transparent'
+                )}
+              >
+                <Text className="font-semibold text-zinc-900 dark:text-white">
+                  {isLoading2 ? 'Signing in...' : 'Login with Entra ID'}
+                </Text>
+              </Pressable>
+
+              <Text className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+                Don&apos;t have an account?{' '}
+                <Text
+                  className="text-zinc-900 underline underline-offset-4 dark:text-white"
+                  onPress={() => Alert.alert('Request access', 'Submit a request for access.')}
+                >
+                  Submit a request for access
+                </Text>
               </Text>
             </View>
-
-            <View className="gap-5">
-              <View className="gap-2">
-                <Text className="text-sm font-medium text-zinc-200">Username</Text>
-                <TextInput
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="your.username"
-                  placeholderTextColor="#71717a"
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-4 text-base text-white"
-                />
-              </View>
-
-              <View className="gap-2">
-                <View className="flex-row items-center">
-                  <Text className="text-sm font-medium text-zinc-200">Password</Text>
-                  <Pressable
-                    onPress={() =>
-                      Alert.alert('Forgot password', 'Use the support flow for password resets.')
-                    }
-                    className="ml-auto"
-                  >
-                    <Text className="text-sm text-zinc-400 underline-offset-4">
-                      Forgot your password?
-                    </Text>
-                  </Pressable>
-                </View>
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor="#71717a"
-                  autoComplete="current-password"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  secureTextEntry
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-4 text-base text-white"
-                />
-              </View>
-
-              {error ? <Text className="text-sm text-red-400">{error}</Text> : null}
-
-              <View className="gap-3">
-                <Pressable
-                  onPress={handleLogin}
-                  disabled={isLoading}
-                  className={cn(
-                    'flex-row items-center justify-center rounded-xl px-6 py-4',
-                    isLoading ? 'bg-zinc-700' : 'bg-white'
-                  )}
-                >
-                  <Text
-                    className={cn(
-                      'mr-2 font-semibold',
-                      isLoading ? 'text-zinc-200' : 'text-black'
-                    )}
-                  >
-                    {isLoading ? 'Signing in...' : 'Login'}
-                  </Text>
-                  {!isLoading ? <ArrowRight size={18} color="#111827" /> : null}
-                </Pressable>
-
-                <Text className="text-center text-xs uppercase tracking-[0.3em] text-zinc-500">
-                  continue with
-                </Text>
-
-                <Pressable
-                  onPress={handleEntraLogin}
-                  disabled={isLoading2}
-                  className={cn(
-                    'flex-row items-center justify-center rounded-xl border border-zinc-700 px-6 py-4',
-                    isLoading2 ? 'bg-zinc-900' : 'bg-transparent'
-                  )}
-                >
-                  <Text className="font-semibold text-white">
-                    {isLoading2 ? 'Signing in...' : 'Login with Entra ID'}
-                  </Text>
-                </Pressable>
-
-                <Text className="text-center text-sm text-zinc-400">
-                  Don&apos;t have an account?{' '}
-                  <Text
-                    className="text-white underline underline-offset-4"
-                    onPress={() =>
-                      Alert.alert('Request access', 'Submit a request for access.')
-                    }
-                  >
-                    Submit a request for access
-                  </Text>
-                </Text>
-              </View>
-            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </BlurView>
+        
+      </View>
+    </ScrollView>
+  </ImageBackground>
+</KeyboardAvoidingView>
   );
 }
