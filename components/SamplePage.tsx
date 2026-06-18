@@ -26,13 +26,14 @@ import { RealtimeDashboard } from './RealtimeDashboard';
 import { UsersPage } from './UsersPage';
 import { ThemeToggle } from './ThemeToggle';
 import { useAppTheme } from '../lib/useAppTheme';
+import { TicketDashboard } from './TicketDash';
 
 type SamplePageProps = {
   auth: AuthResponse;
   onLogout: () => void;
 };
 
-type SectionKey = 'dashboard' | 'registry' | 'lxc' | 'profile' | 'users' | 'immich';
+type SectionKey = 'dashboard' | 'profile' | 'users' | 'tickets';
 
 // ─── Floating tab item ────────────────────────────────────────────────────────
 
@@ -329,6 +330,7 @@ const NAV_ITEMS: {
 }[] = [
   { key: 'dashboard', label: 'Home',     icon: (c, s) => <LayoutDashboard size={s} color={c} /> },
   { key: 'users',     label: 'Users',    icon: (c, s) => <Users           size={s} color={c} /> },
+  { key: 'tickets',   label: 'Tickets',  icon: (c, s) => <ServerCog       size={s} color={c} /> },
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -345,7 +347,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
 
   const content = useMemo(() => {
     if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
-    
+    if (section === 'tickets') return <TicketDashboard />;
     if (section === 'users') return <UsersPage />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token, colors]);
