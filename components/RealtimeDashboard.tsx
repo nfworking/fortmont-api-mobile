@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View, useWindowDimensions, ImageBackground } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import { RealtimeVmCard, type RealtimeVm } from './RealtimeVmCard';
 
@@ -105,6 +105,7 @@ export function RealtimeDashboard() {
   }, [loadRealtimeData]);
 
   return (
+    
     <View className="flex-1">
       <ScrollView
         refreshControl={
@@ -120,7 +121,7 @@ export function RealtimeDashboard() {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-4 overflow-hidden rounded-3xl border border-emerald-200 bg-white px-5 py-5 dark:border-emerald-900/30 dark:bg-zinc-950">
+        <View className="mb-4 overflow-hidden rounded-3xl border border-emerald-200 px-5 py-5 dark:border-emerald-900/30 dark:bg-zinc-950">
           <View className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-500/10" />
           <View className="absolute -bottom-10 -left-8 h-24 w-24 rounded-full bg-cyan-500/10" />
 
@@ -170,5 +171,6 @@ export function RealtimeDashboard() {
         )}
       </ScrollView>
     </View>
+  
   );
 }

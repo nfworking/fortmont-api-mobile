@@ -418,7 +418,7 @@ export function TicketDashboard() {
   }, [tickets, search, activeTab]);
 
   return (
-    <View className="flex-1 bg-zinc-50 dark:bg-zinc-950">
+    <View className="flex-1 bg-transparent ">
       {/* Header */}
       <View className="px-4 pt-4 pb-3">
         <Text className="text-[22px] font-bold tracking-tight text-zinc-900 dark:text-zinc-50">

@@ -27,6 +27,8 @@ import { UsersPage } from './UsersPage';
 import { ThemeToggle } from './ThemeToggle';
 import { useAppTheme } from '../lib/useAppTheme';
 import { TicketDashboard } from './TicketDash';
+import { ImageBackground } from 'react-native';
+
 
 type SamplePageProps = {
   auth: AuthResponse;
@@ -347,7 +349,8 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
 
   const content = useMemo(() => {
     if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
-    if (section === 'tickets') return <TicketDashboard />;
+    if (section === 'tickets') return <TicketDashboard />
+      ;
     if (section === 'users') return <UsersPage />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token, colors]);
@@ -423,7 +426,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
       >
         <BlurView
           blurType={colors.blurType}
-          blurAmount={50}
+          blurAmount={5}
           style={{ position: 'absolute', inset: 0 }}
         />
         <View
