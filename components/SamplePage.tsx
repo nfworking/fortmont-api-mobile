@@ -349,9 +349,8 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
 
   const content = useMemo(() => {
     if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
-    if (section === 'tickets') return <TicketDashboard />
-      ;
-    if (section === 'users') return <UsersPage />;
+    if (section === 'tickets') return <TicketDashboard auth={auth} />;
+    if (section === 'users') return <UsersPage auth={auth} />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token, colors]);
 

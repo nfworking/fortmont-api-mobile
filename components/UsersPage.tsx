@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useColorScheme } from 'nativewind';
+import { type AuthResponse } from './LoginScreen'; // Adjust this import path to match your setup
 
 type User = {
   id: string;
@@ -15,7 +16,12 @@ type User = {
   displayName?: string;
 };
 
-export function UsersPage() {
+// 🛑 FIX: Added explicit typed props to receive auth context data
+type UsersPageProps = {
+  auth: AuthResponse;
+};
+
+export function UsersPage({ auth }: UsersPageProps) {
   const { colorScheme } = useColorScheme();
   const spinnerColor = colorScheme === 'dark' ? '#ffffff' : '#18181b';
   const [users, setUsers] = useState<User[]>([]);
@@ -24,8 +30,6 @@ export function UsersPage() {
   const { width } = useWindowDimensions();
   const isCompact = width < 768;
 
-
-
   useEffect(() => {
     const fetchUsers = async () => {
       setIsLoading(true);
@@ -33,7 +37,11 @@ export function UsersPage() {
 
       try {
         const response = await fetch('https://api.fortmont.me/api/users', {
-          
+          headers: {
+            'all': 'true',
+            // 🛑 FIX: Used auth.token dynamically from props instead of an undefined 'token' variable
+            'Authorization': `Bearer ${auth.token}`,
+          },
         });
 
         const data = (await response.json()) as User[] | { data?: User[] };
@@ -55,7 +63,7 @@ export function UsersPage() {
     };
 
     fetchUsers();
-  }, []);
+  }, [auth.token]); // Added dependency tracking for the token string
 
   const getName = (user: User) =>
     user.displayName?.trim() || user.username;

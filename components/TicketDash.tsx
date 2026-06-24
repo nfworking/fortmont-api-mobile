@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
+import { type AuthResponse } from './LoginScreen'; // Adjust import path to your setup
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,16 +100,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'unassigned', label: 'Unassigned' },
   { key: 'resolved', label: 'Resolved' },
 ];
-
-// ---------------------------------------------------------------------------
-// Data-driven color lookups.
-//
-// These map ticket priority/status to a color pair. Because the value is
-// chosen at render time from ticket data (not a static className Tailwind
-// can extract at build time), the swatch itself is applied via a tiny
-// inline `style`, while every other visual property (padding, radius,
-// font weight, dark mode, layout) stays in `className` below.
-// ---------------------------------------------------------------------------
 
 const priorityColor: Record<TicketPriority, { fg: string; bg: string }> = {
   LOW: { fg: '#15803D', bg: 'rgba(34, 197, 94, 0.12)' },
@@ -247,12 +238,9 @@ function TicketDetailModal({ ticket, onClose }: { ticket: Ticket | null; onClose
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      {/* Backdrop */}
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onClose}>
-        {/* Stop backdrop press from closing when tapping inside the sheet */}
         <Pressable onPress={(e) => e.stopPropagation()}>
           <View className="max-h-[85%] rounded-t-3xl border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            {/* Drag handle */}
             <View className="items-center pt-2.5 pb-1">
               <View className="h-1 w-9 rounded-full bg-zinc-300 dark:bg-zinc-700" />
             </View>
@@ -337,7 +325,12 @@ function TicketDetailModal({ ticket, onClose }: { ticket: Ticket | null; onClose
 
 const TICKETS_ENDPOINT = 'https://api.fortmont.me/api/ticketing/get/ticket';
 
-export function TicketDashboard() {
+// 🛑 FIX: Explicitly typed props to receive auth context data
+type TicketDashboardProps = {
+  auth: AuthResponse;
+};
+
+export function TicketDashboard({ auth }: TicketDashboardProps) {
   const [tickets, setTickets] = React.useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -353,7 +346,10 @@ export function TicketDashboard() {
 
     try {
       const res = await fetch(`${TICKETS_ENDPOINT}?refresh=${Date.now()}`, {
-        headers: { 'Cache-Control': 'no-cache' },
+        headers: { 
+          'Cache-Control': 'no-cache', 
+          'Authorization': `Bearer ${auth.token}` 
+        },
       });
       if (!res.ok) throw new Error(`Request failed with ${res.status}`);
       const data: Ticket[] = await res.json();
@@ -365,14 +361,12 @@ export function TicketDashboard() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, []);
+  }, [auth.token]); // Added dependency tracking for the token
 
   React.useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
 
-  // Light polling so the queue stays roughly current, mirroring the web
-  // dashboard's silent background refresh.
   React.useEffect(() => {
     const id = setInterval(() => fetchTickets({ silent: true }), 15000);
     return () => clearInterval(id);
