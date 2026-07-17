@@ -28,6 +28,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { useAppTheme } from '../lib/useAppTheme';
 import { TicketDashboard } from './TicketDash';
 import { ImageBackground } from 'react-native';
+import { StorageScreen } from './StorageScreen';
 
 
 type SamplePageProps = {
@@ -35,7 +36,7 @@ type SamplePageProps = {
   onLogout: () => void;
 };
 
-type SectionKey = 'dashboard' | 'profile' | 'users' | 'tickets';
+type SectionKey = 'dashboard' | 'profile' | 'users' | 'tickets' | 'storage';
 
 // ─── Floating tab item ────────────────────────────────────────────────────────
 
@@ -333,6 +334,7 @@ const NAV_ITEMS: {
   { key: 'dashboard', label: 'Home',     icon: (c, s) => <LayoutDashboard size={s} color={c} /> },
   { key: 'users',     label: 'Users',    icon: (c, s) => <Users           size={s} color={c} /> },
   { key: 'tickets',   label: 'Tickets',  icon: (c, s) => <ServerCog       size={s} color={c} /> },
+  { key: 'storage',   label: 'Storage', icon: (c, s) => <Database        size={s} color={c} /> },
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -351,6 +353,7 @@ export function SamplePage({ auth, onLogout }: SamplePageProps) {
     if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
     if (section === 'tickets') return <TicketDashboard auth={auth} />;
     if (section === 'users') return <UsersPage auth={auth} />;
+    if (section === 'storage') return <StorageScreen token={auth.token} baseUrl='https://api.fortmont.me' />;
     return <RealtimeDashboard />;
   }, [section, auth.user, auth.token, colors]);
 
