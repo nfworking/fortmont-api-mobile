@@ -11,6 +11,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@fortmont/auth-client-mobile": "^1.0.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/blur": "^4.4.1",
     "@react-native-firebase/app": "^24.0.0",
