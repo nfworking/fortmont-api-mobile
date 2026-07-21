@@ -1,3 +1,5 @@
+import '@fortmont/auth-client-mobile/dist/polyfills.js';
+
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';

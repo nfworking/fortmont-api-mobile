@@ -1,35 +1,28 @@
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { ArrowRight } from 'lucide-react-native';
-import * as AuthSession from 'expo-auth-session';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowRight, BadgeCheck, ShieldCheck, Sparkles } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
-import { useColorScheme } from 'nativewind';
+import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeToggle } from './ThemeToggle';
-import { ImageBackground } from 'react-native';
-import {BlurView} from 'expo-blur';
+import { useAppTheme } from '../lib/useAppTheme';
+import {
+  createLoginRequest,
+  exchangeCode,
+  fetchUserInfo,
+} from '@fortmont/auth-client-mobile';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const AUTH_URL = 'https://api.fortmont.me/api/auth/login';
-const ENTRA_AUTH_URL = 'https://api.fortmont.me/api/auth/entra-login';
-const DEFAULT_ENTRA_SCOPES = ['openid', 'profile', 'email', 'User.Read'];
+const DEFAULT_FORTMONT_ISSUER = 'https://api.fortmont.me';
+const DEFAULT_FORTMONT_SCOPES = ['openid', 'profile', 'email'];
 
 type AppExtra = {
-  entraClientId?: string;
-  entraTenantId?: string;
-  entraScopes?: string[];
+  fortmontIssuer?: string;
+  fortmontClientId?: string;
+  fortmontScopes?: string[];
 };
 
 type AuthUser = {
@@ -57,58 +50,45 @@ function cn(...values: (string | false | null | undefined)[]) {
   return values.filter(Boolean).join(' ');
 }
 
+function mapUserInfo(userInfo: { sub: string; email?: string; name?: string; picture?: string }) {
+  const email = userInfo.email?.trim() || '';
+  const displayName = userInfo.name?.trim() || email || 'Fortmont user';
+
+  return {
+    id: userInfo.sub,
+    username: email || userInfo.sub,
+    displayName,
+    email,
+    isActive: true,
+    role: null,
+    phone: null,
+    avatarUrl: userInfo.picture ?? null,
+  } satisfies AuthUser;
+}
+
 export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
-  const { colorScheme } = useColorScheme();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const { isDark } = useAppTheme();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoading2, setIsLoading2] = useState(false);
 
   const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
-  const entraClientId = extra.entraClientId?.trim() ?? '';
-  const entraTenantId = extra.entraTenantId?.trim() ?? '';
-  const entraEnabled = entraClientId.length > 0 && entraTenantId.length > 0;
-
-  const appScheme = Array.isArray(Constants.expoConfig?.scheme)
-    ? Constants.expoConfig?.scheme[0]
-    : Constants.expoConfig?.scheme;
-
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: appScheme ?? 'com.fortmontapi.app',
-    path: 'auth',
-  });
-
-  const entraScopes = useMemo(() => {
-    if (Array.isArray(extra.entraScopes) && extra.entraScopes.length > 0) {
-      return extra.entraScopes;
+  const issuer = extra.fortmontIssuer?.trim() || DEFAULT_FORTMONT_ISSUER;
+  const clientId = extra.fortmontClientId?.trim() || '';
+  const redirectUri = useMemo(() => Linking.createURL('auth/callback'), []);
+  const scopes = useMemo(() => {
+    if (Array.isArray(extra.fortmontScopes) && extra.fortmontScopes.length > 0) {
+      return extra.fortmontScopes;
     }
-    return DEFAULT_ENTRA_SCOPES;
-  }, [extra.entraScopes]);
 
-  const discovery = AuthSession.useAutoDiscovery(
-    `https://login.microsoftonline.com/${entraTenantId || 'common'}/v2.0`
-  );
-
-  const [request, , promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: entraClientId || 'missing-entra-client-id',
-      scopes: entraScopes,
-      prompt: AuthSession.Prompt.SelectAccount,
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
-      redirectUri,
-    },
-    discovery
-  );
+    return DEFAULT_FORTMONT_SCOPES;
+  }, [extra.fortmontScopes]);
 
   const handleLogin = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const trimmedUsername = username.trim();
-    if (!trimmedUsername || !password) {
-      setError('Enter your username and password.');
+    if (!clientId) {
+      setError('Set fortmontClientId in app.json before signing in.');
       return;
     }
 
@@ -116,294 +96,159 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(AUTH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          username: trimmedUsername,
-          password,
-        }),
+      const loginRequest = await createLoginRequest({
+        issuer,
+        clientId,
+        redirectUri,
+        scopes,
       });
 
-      const payload = (await response.json()) as Partial<AuthResponse> & {
-        message?: string;
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.message || payload.error || 'Login failed.');
-        
-      }
-
-      if (!payload.token || !payload.user) {
-        throw new Error('Server response was missing the expected token or user data.');
-      }
-      await Haptics.notificationAsync(
-       Haptics.NotificationFeedbackType.Success
-      );
-
-      onAuthenticated({
-        token: payload.token,
-        tokenType: payload.tokenType ?? 'Bearer',
-        user: payload.user,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed.';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const handleEntraLogin = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    if (!entraEnabled) {
-      setError(
-        'Entra ID is not configured. Set expo.extra.entraClientId and expo.extra.entraTenantId.'
-      );
-      return;
-    }
-
-    if (!request) {
-      setError('Microsoft sign-in is still initializing. Please try again.');
-      return;
-    }
-
-    if (!discovery) {
-      setError('Provider discovery is not ready yet. Please try again.');
-      return;
-    }
-
-    setIsLoading2(true);
-    setError('');
-
-    try {
-      const result = await promptAsync();
+      const result = await WebBrowser.openAuthSessionAsync(loginRequest.authUrl, redirectUri);
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
         return;
       }
 
-      if (result.type !== 'success') {
-        const details = result.type === 'error' ? result.error?.message : '';
-        throw new Error(details || 'Microsoft sign-in failed.');
+      if (result.type !== 'success' || !result.url) {
+        throw new Error('Fortmont sign-in was not completed.');
       }
 
-      const code = result.params?.code;
+      const code = new URL(result.url).searchParams.get('code');
       if (!code) {
-        throw new Error('Microsoft did not return an authorization code.');
+        throw new Error('Fortmont did not return an authorization code.');
       }
 
-      // Exchange the authorization code for tokens using PKCE.
-      const tokenResponse = await AuthSession.exchangeCodeAsync(
+      const tokenResponse = await exchangeCode(
         {
-          clientId: entraClientId,
-          code,
+          issuer,
+          clientId,
           redirectUri,
-          extraParams: {
-            code_verifier: request.codeVerifier!,
-          },
-        } as any,
-        discovery as any
+        },
+        code,
+        loginRequest.codeVerifier
       );
 
-      // We need the ID token — not the access token — for backend verification.
-      // Different versions/shapes of the response expose tokens in different
-      // properties. Cast to `any` and check common places for the ID token.
-      const anyResp = tokenResponse as any;
-      const microsoftToken =
-        anyResp.idToken ??
-        anyResp.authentication?.idToken ??
-        anyResp.authentication?.accessToken ??
-        anyResp.accessToken ??
-        anyResp.params?.access_token ??
-        anyResp.access_token;
-
-      if (!microsoftToken) {
-        throw new Error(
-          'Microsoft did not return an ID token. Ensure the openid scope is requested and the app registration has ID tokens enabled.'
-        );
-      }
-
-      const response = await fetch(ENTRA_AUTH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ token: microsoftToken }),
-      });
-
-      const payload = (await response.json()) as Partial<AuthResponse> & {
-        message?: string;
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.message || payload.error || 'Entra login failed.');
-      }
-
-      if (!payload.token || !payload.user) {
-        throw new Error('Server response was missing the expected token or user data.');
-      }
+      const userInfo = await fetchUserInfo(tokenResponse.access_token, issuer);
 
       onAuthenticated({
-        token: payload.token,
-        tokenType: payload.tokenType ?? 'Bearer',
-        user: payload.user,
+        token: tokenResponse.access_token,
+        tokenType: tokenResponse.token_type ?? 'Bearer',
+        user: mapUserInfo(userInfo),
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Entra login failed.';
+      const message = err instanceof Error ? err.message : 'Fortmont sign-in failed.';
       setError(message);
     } finally {
-      setIsLoading2(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <KeyboardAvoidingView
-  className="flex-1"
-  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
->
-  <ImageBackground
-    source={{ uri: 'https://images.unsplash.com/photo-1780592657995-60f814efa4a8?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }}
-    resizeMode="cover"
-    className="flex-1"
-    style={{ flex: 1, width: '100%', height: '100%' }}
-    // 👇 1. This blurs the entire background image
-    blurRadius={2} // Adjust the blur radius as needed (0 for no blur, higher for more blur)
-  >
-    <View
-      className="absolute right-4 z-10"
-      style={{ top: insets.top + 12 }}
+      className="flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ThemeToggle />
-    </View>
-    
-    <ScrollView
-      className="flex-1 px-6"
-      contentContainerStyle={{ flexGrow: 1 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="flex-1 justify-center py-16">
-        
-        {/* 👇 2. Changed this from a View to a BlurView for the frosted-glass login box */}
-        <BlurView 
-          intensity={60} // Controls the strength of the login box blur
-          tint={colorScheme === 'dark' ? 'dark' : 'light'} // Dynamic tint matching system theme
-          // Note: Added 'overflow-hidden' so the blur doesn't bleed out of the rounded corners
-          className="mx-auto w-full max-w-xl rounded-3xl border border-zinc-200/50 px-6 py-8 dark:border-zinc-800/50 overflow-hidden"
+      <View className={cn('flex-1', isDark ? 'bg-zinc-950' : 'bg-zinc-50')}>
+        <View
+          className={cn(
+            'absolute -top-24 left-[-72px] h-72 w-72 rounded-full opacity-70',
+            isDark ? 'bg-cyan-400/10' : 'bg-cyan-500/10'
+          )}
+        />
+        <View
+          className={cn(
+            'absolute bottom-0 right-[-64px] h-80 w-80 rounded-full opacity-80',
+            isDark ? 'bg-emerald-400/10' : 'bg-indigo-500/10'
+          )}
+        />
+
+        <View className="absolute right-4 z-10" style={{ top: insets.top + 12 }}>
+          <ThemeToggle />
+        </View>
+
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
         >
-          <View className="items-center gap-2 text-center mb-6">
-            <Text className="text-2xl font-bold text-zinc-900 dark:text-white">Login to your account</Text>
-            <Text className="text-sm text-center text-zinc-500 dark:text-zinc-400">
-              Enter your username below to login to your account
-            </Text>
-          </View>
+          <View className="flex-1 justify-center py-16">
+            <View
+              className={cn(
+                'mx-auto w-full max-w-xl rounded-[28px] border px-6 py-8 shadow-2xl',
+                isDark ? 'border-white/10 bg-zinc-950/90' : 'border-zinc-200/80 bg-white/95'
+              )}
+            >
+              <View className="mb-8 gap-4">
+                <View className="flex-row items-center gap-3">
+                  <View
+                    className={cn(
+                      'h-12 w-12 items-center justify-center rounded-2xl',
+                      isDark ? 'bg-white/10' : 'bg-zinc-900'
+                    )}
+                  >
+                    <Sparkles size={22} color="#ffffff" />
+                  </View>
+                  <View>
+                    <Text className={cn('text-xs font-semibold uppercase tracking-[0.28em]', isDark ? 'text-zinc-500' : 'text-zinc-400')}>
+                      Fortmont access
+                    </Text>
+                    <Text className={cn('mt-1 text-3xl font-semibold tracking-tight', isDark ? 'text-white' : 'text-zinc-950')}>
+                      Sign in with Fortmont
+                    </Text>
+                  </View>
+                </View>
 
-          <View className="gap-5">
-            <View className="gap-2">
-              <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Username</Text>
-              <TextInput
-                value={username}
-                onChangeText={setUsername}
-                placeholder="your.username"
-                placeholderTextColor="#71717a"
-                autoComplete="username"
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="rounded-xl border border-zinc-300 bg-white/70 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-white"
-              />
-            </View>
-
-            <View className="gap-2">
-              <View className="flex-row items-center">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Password</Text>
-                <Pressable
-                  onPress={() =>
-                    Alert.alert('Forgot password', 'Use the support flow for password resets.')
-                  }
-                  className="ml-auto"
-                >
-                  <Text className="text-sm text-zinc-500 underline-offset-4 dark:text-zinc-400">
-                    Forgot your password?
-                  </Text>
-                </Pressable>
+                <Text className={cn('max-w-lg text-base leading-6', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
+                  Continue with your Fortmont identity to open the mobile app. The login happens in the
+                  system browser and returns straight back to this screen.
+                </Text>
               </View>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="#71717a"
-                autoComplete="current-password"
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry
-                className="rounded-xl border border-zinc-300 bg-white/70 px-4 py-4 text-base text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-white"
-              />
-            </View>
 
-            {error ? <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text> : null}
+              <View className="gap-3">
+                <View className="flex-row flex-wrap gap-3">
+                  <View className={cn('flex-row items-center gap-2 rounded-full px-3 py-2', isDark ? 'bg-white/5' : 'bg-zinc-100')}>
+                    <ShieldCheck size={15} color={isDark ? '#a1a1aa' : '#52525b'} />
+                    <Text className={cn('text-sm', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
+                      PKCE protected
+                    </Text>
+                  </View>
+                  <View className={cn('flex-row items-center gap-2 rounded-full px-3 py-2', isDark ? 'bg-white/5' : 'bg-zinc-100')}>
+                    <BadgeCheck size={15} color={isDark ? '#a1a1aa' : '#52525b'} />
+                    <Text className={cn('text-sm', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
+                      Secure callback flow
+                    </Text>
+                  </View>
+                </View>
 
-            <View className="gap-3">
-              <Pressable
-                onPress={handleLogin}
-                disabled={isLoading}
-                className={cn(
-                  'flex-row items-center justify-center rounded-xl px-6 py-4',
-                  isLoading ? 'bg-zinc-400 dark:bg-zinc-700' : 'bg-zinc-900 dark:bg-white'
-                )}
-              >
-                <Text
+                {error ? <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text> : null}
+
+                <Pressable
+                  onPress={handleLogin}
+                  disabled={isLoading}
                   className={cn(
-                    'mr-2 font-semibold',
-                    isLoading ? 'text-zinc-100 dark:text-zinc-200' : 'text-white dark:text-black'
+                    'mt-2 flex-row items-center justify-center rounded-2xl px-6 py-4',
+                    isLoading ? 'bg-zinc-400 dark:bg-zinc-700' : 'bg-zinc-900 dark:bg-white'
                   )}
                 >
-                  {isLoading ? 'Signing in...' : 'Login'}
-                </Text>
-                {!isLoading ? (
-                  <ArrowRight size={18} color={colorScheme === 'dark' ? '#000000' : '#ffffff'} />
-                ) : null}
-              </Pressable>
+                  <Text
+                    className={cn(
+                      'mr-2 text-base font-semibold',
+                      isLoading ? 'text-zinc-100 dark:text-zinc-200' : 'text-white dark:text-zinc-950'
+                    )}
+                  >
+                    {isLoading ? 'Opening Fortmont...' : 'Continue with Fortmont'}
+                  </Text>
+                  {!isLoading ? <ArrowRight size={18} color={isDark ? '#09090b' : '#ffffff'} /> : null}
+                </Pressable>
 
-              <Text className="text-center text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
-                continue with
-              </Text>
-
-              <Pressable
-                onPress={handleEntraLogin}
-                disabled={isLoading2}
-                className={cn(
-                  'flex-row items-center justify-center rounded-xl border border-zinc-300 px-6 py-4 dark:border-zinc-700',
-                  isLoading2 ? 'bg-zinc-100 dark:bg-zinc-900' : 'bg-transparent'
-                )}
-              >
-                <Text className="font-semibold text-zinc-900 dark:text-white">
-                  {isLoading2 ? 'Signing in...' : 'Login with Entra ID'}
+                <Text className={cn('pt-2 text-center text-sm', isDark ? 'text-zinc-500' : 'text-zinc-500')}>
+                  You&apos;ll be redirected to Fortmont to complete authentication.
                 </Text>
-              </Pressable>
-
-              <Text className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-                Don&apos;t have an account?{' '}
-                <Text
-                  className="text-zinc-900 underline underline-offset-4 dark:text-white"
-                  onPress={() => Alert.alert('Request access', 'Submit a request for access.')}
-                >
-                  Submit a request for access
-                </Text>
-              </Text>
+              </View>
             </View>
           </View>
-        </BlurView>
-        
+        </ScrollView>
       </View>
-    </ScrollView>
-  </ImageBackground>
-</KeyboardAvoidingView>
+    </KeyboardAvoidingView>
   );
 }

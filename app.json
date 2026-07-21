@@ -68,15 +68,8 @@
         "projectId": "17f834c2-e741-4c08-ae43-ad98cf7db728"
       },
 
-      "entraClientId": "827b9380-f015-42a7-a3fe-f8edc047001e",
-      "entraTenantId": "d17e117c-a505-44bf-a8ad-ea1cb324d14a",
-
-      "entraScopes": [
-        "openid",
-        "profile",
-        "email",
-        "User.Read"
-      ]
+      "fortmontIssuer": "https://api.fortmont.me",
+      "fortmontClientId": "f8aeadf8-761f-4a50-a1e3-9ace4353e89c"
     },
 
     "owner": "nfworking"
