@@ -1,6 +1,6 @@
 {
   "name": "fortmont-api-mobile",
-  "version": "1.9.5",
+  "version": "2.0.0",
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",

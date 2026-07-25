@@ -86,21 +86,6 @@ function timeAgo(dateString: string) {
   return date.toLocaleDateString();
 }
 
-// ---------------------------------------------------------------------------
-// Tabs (status filter)
-// ---------------------------------------------------------------------------
-
-type TabKey = 'all' | 'open' | 'in_progress' | 'pending' | 'unassigned' | 'resolved';
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'open', label: 'Open' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'unassigned', label: 'Unassigned' },
-  { key: 'resolved', label: 'Resolved' },
-];
-
 const priorityColor: Record<TicketPriority, { fg: string; bg: string }> = {
   LOW: { fg: '#15803D', bg: 'rgba(34, 197, 94, 0.12)' },
   MEDIUM: { fg: '#A16207', bg: 'rgba(234, 179, 8, 0.14)' },
@@ -122,7 +107,7 @@ const statusColor: Record<string, { fg: string; bg: string }> = {
 
 function Pill({ label, fg, bg }: { label: string; fg: string; bg: string }) {
   return (
-    <View className="rounded-md px-1.5 py-0.5" style={{ backgroundColor: bg }}>
+    <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: bg }}>
       <Text className="text-[10px] font-bold tracking-wide" style={{ color: fg }} numberOfLines={1}>
         {label}
       </Text>
@@ -130,32 +115,11 @@ function Pill({ label, fg, bg }: { label: string; fg: string; bg: string }) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  accentClassName,
-}: {
-  label: string;
-  value: number;
-  accentClassName?: string;
-}) {
-  return (
-    <View className="flex-1 rounded-xl border border-zinc-200 bg-white px-2 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
-      <Text className={`text-lg font-bold text-zinc-900 dark:text-zinc-50 ${accentClassName ?? ''}`}>
-        {value}
-      </Text>
-      <Text className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">{label}</Text>
-    </View>
-  );
-}
-
 function TicketRow({
   ticket,
-  viewMode,
   onPress,
 }: {
   ticket: Ticket;
-  viewMode: 'list' | 'grid';
   onPress: (ticket: Ticket) => void;
 }) {
   const status = normalizeStatus(ticket.status);
@@ -166,11 +130,9 @@ function TicketRow({
   return (
     <Pressable
       onPress={() => onPress(ticket)}
-      className={`rounded-xl border border-zinc-200 bg-white p-3 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:active:bg-zinc-800 ${
-        viewMode === 'grid' ? 'mb-2' : ''
-      }`}
+      className="rounded-2xl border border-zinc-200 bg-white p-4 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:active:bg-zinc-900"
     >
-      <View className="mb-2 flex-row items-center justify-between">
+      <View className="mb-3 flex-row items-center justify-between">
         <View className="flex-shrink flex-row gap-1.5">
           <Pill label={ticket.priority} fg={pColor.fg} bg={pColor.bg} />
           <Pill label={statusLabel(status)} fg={sColor.fg} bg={sColor.bg} />
@@ -179,21 +141,21 @@ function TicketRow({
       </View>
 
       <Text
-        className="mb-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50"
-        numberOfLines={viewMode === 'grid' ? 2 : 1}
+        className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50"
+        numberOfLines={1}
       >
         {ticket.subject}
       </Text>
 
-      <Text className="mb-2.5 text-xs text-zinc-500 dark:text-zinc-400" numberOfLines={1}>
+      <Text className="mb-3 text-xs text-zinc-500 dark:text-zinc-400" numberOfLines={1}>
         {ticket.department} · {ticket.type}
       </Text>
 
-      <View className="flex-row items-center justify-between">
+      <View className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
         <View className="flex-shrink flex-row items-center gap-1.5">
           <View
             className={`h-1.5 w-1.5 rounded-full ${
-              ticket.assignedToId ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'
+              ticket.assignedToId ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600'
             }`}
           />
           <Text className="flex-shrink text-xs text-zinc-500 dark:text-zinc-400" numberOfLines={1}>
@@ -212,7 +174,7 @@ function EmptyState() {
         No tickets here
       </Text>
       <Text className="text-center text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-        Nothing matches the current filter. Try a different tab or search term.
+        No tickets matched your search.
       </Text>
     </View>
   );
@@ -336,8 +298,6 @@ export function TicketDashboard({ auth }: TicketDashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
-  const [activeTab, setActiveTab] = React.useState<TabKey>('all');
-  const [viewMode, setViewMode] = React.useState<'list' | 'grid'>('list');
   const [selectedTicket, setSelectedTicket] = React.useState<Ticket | null>(null);
 
   const fetchTickets = React.useCallback(async (opts?: { silent?: boolean }) => {
@@ -399,45 +359,33 @@ export function TicketDashboard({ auth }: TicketDashboardProps) {
       });
     }
 
-    if (activeTab !== 'all') {
-      result = result.filter((t) => {
-        const status = normalizeStatus(t.status);
-        if (activeTab === 'resolved') return status === 'resolved' || status === 'closed';
-        if (activeTab === 'unassigned') return !t.assignedToId;
-        return status === activeTab;
-      });
-    }
-
     return result;
-  }, [tickets, search, activeTab]);
+  }, [tickets, search]);
 
   return (
-    <View className="flex-1 bg-transparent ">
+    <View className="flex-1 bg-transparent">
       {/* Header */}
-      <View className="px-4 pt-4 pb-3">
-        <Text className="text-[22px] font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Ticket Queue
+      <View className="mb-4 rounded-3xl border border-zinc-200 bg-white px-5 py-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <Text className="text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
+          Ticketing
         </Text>
-        <Text className="mt-0.5 text-[13px] text-zinc-500 dark:text-zinc-400">
-          {stats.total} ticket{stats.total === 1 ? '' : 's'} · updated live
+        <Text className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+          Support Queue
+        </Text>
+        <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          {stats.open} open ticket{stats.open === 1 ? '' : 's'} · updates every 15 seconds
         </Text>
       </View>
 
-      {/* Stats */}
-      <View className="mb-3.5 flex-row gap-2 px-4">
-        <StatCard label="Open" value={stats.open} accentClassName="text-blue-600 dark:text-blue-400" />
-        <StatCard
-          label="In Progress"
-          value={stats.inProgress}
-          accentClassName="text-violet-600 dark:text-violet-400"
-        />
-        <StatCard label="Unassigned" value={stats.unassigned} />
-        <StatCard label="Urgent" value={stats.urgent} accentClassName="text-rose-600 dark:text-rose-400" />
+      {/* Open count */}
+      <View className="mb-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+        <Text className="text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Open</Text>
+        <Text className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{stats.open}</Text>
       </View>
 
-      {/* Search + view toggle */}
-      <View className="mb-2.5 flex-row gap-2 px-4">
-        <View className="h-[38px] flex-1 justify-center rounded-[10px] border border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900">
+      {/* Search */}
+      <View className="mb-3 flex-row gap-2">
+        <View className="h-[42px] flex-1 justify-center rounded-xl border border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-950">
           <TextInput
             value={search}
             onChangeText={setSearch}
@@ -446,101 +394,30 @@ export function TicketDashboard({ auth }: TicketDashboardProps) {
             className="text-sm text-zinc-900 dark:text-zinc-50"
           />
         </View>
-
-        <View className="flex-row overflow-hidden rounded-[10px] border border-zinc-200 dark:border-zinc-800">
-          <Pressable
-            onPress={() => setViewMode('list')}
-            className={`h-[38px] items-center justify-center px-3 ${
-              viewMode === 'list' ? 'bg-blue-100 dark:bg-blue-950' : 'bg-transparent'
-            }`}
-          >
-            <Text
-              className={`text-[13px] font-semibold ${
-                viewMode === 'list'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-zinc-500 dark:text-zinc-400'
-              }`}
-            >
-              List
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setViewMode('grid')}
-            className={`h-[38px] items-center justify-center px-3 ${
-              viewMode === 'grid' ? 'bg-blue-100 dark:bg-blue-950' : 'bg-transparent'
-            }`}
-          >
-            <Text
-              className={`text-[13px] font-semibold ${
-                viewMode === 'grid'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-zinc-500 dark:text-zinc-400'
-              }`}
-            >
-              Cards
-            </Text>
-          </Pressable>
-        </View>
       </View>
-
-      {/* Status tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mb-2.5 flex-grow-0"
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-      >
-        {TABS.map((item) => {
-          const active = activeTab === item.key;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => setActiveTab(item.key)}
-              className={`rounded-full border px-3.5 py-1.5 ${
-                active
-                  ? 'border-blue-500 bg-blue-100 dark:border-blue-400 dark:bg-blue-950'
-                  : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
-              }`}
-            >
-              <Text
-                className={`text-[13px] font-semibold ${
-                  active ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'
-                }`}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
 
       {/* Error banner */}
       {error && (
-        <View className="mx-4 mb-2.5 rounded-[10px] border border-rose-300 bg-rose-50 p-2.5 dark:border-rose-900 dark:bg-rose-950/40">
+        <View className="mb-3 rounded-xl border border-rose-300 bg-rose-50 p-3 dark:border-rose-900 dark:bg-rose-950/40">
           <Text className="text-[13px] text-zinc-900 dark:text-zinc-50">{error}</Text>
         </View>
       )}
 
       {/* Ticket list */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator className="text-blue-500" />
+        <View className="flex-1 items-center justify-center rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+          <ActivityIndicator className="text-zinc-900 dark:text-zinc-100" />
         </View>
       ) : (
         <FlatList
           data={filteredTickets}
-          key={viewMode}
           keyExtractor={(t) => t.id}
-          numColumns={viewMode === 'grid' ? 2 : 1}
-          columnWrapperStyle={viewMode === 'grid' ? { gap: 8 } : undefined}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 8 }}
+          contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
           refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={handlePullToRefresh} tintColor="#3B82F6" />
+            <RefreshControl refreshing={isRefreshing} onRefresh={handlePullToRefresh} tintColor="#52525b" />
           }
           renderItem={({ item }) => (
-            <View className={viewMode === 'grid' ? 'flex-1' : undefined}>
-              <TicketRow ticket={item} viewMode={viewMode} onPress={setSelectedTicket} />
-            </View>
+            <TicketRow ticket={item} onPress={setSelectedTicket} />
           )}
           ListEmptyComponent={<EmptyState />}
         />

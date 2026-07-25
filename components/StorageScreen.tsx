@@ -47,6 +47,7 @@ import * as DocumentPicker from "expo-document-picker";
 // to the legacy subpath. Import from there so the types resolve correctly.
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { useAppTheme } from "../lib/useAppTheme";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -503,14 +504,14 @@ function FileCard({
 
   return (
     <TouchableOpacity
-      className="flex-1 m-1.5 rounded-xl border border-white/10 bg-zinc-900 overflow-hidden"
+      className="m-1.5 flex-1 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
       style={{ maxWidth: "46%" }}
       onPress={image ? onImagePress : undefined}
       onLongPress={onLongPress}
       activeOpacity={0.75}
     >
       {/* thumbnail */}
-      <View className="aspect-square w-full items-center justify-center bg-zinc-800">
+      <View className="aspect-square w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
         {image && imgUrl ? (
           <Image
             source={{ uri: imgUrl }}
@@ -531,12 +532,12 @@ function FileCard({
 
       {/* meta */}
       <View className="px-2.5 py-2">
-        <Text className="text-xs font-semibold text-white" numberOfLines={1}>
+        <Text className="text-xs font-semibold text-zinc-900 dark:text-white" numberOfLines={1}>
           {file.name}
         </Text>
         <View className="mt-0.5 flex-row items-center justify-between">
-          <Text className="font-mono text-[10px] uppercase text-zinc-500">{ext}</Text>
-          <Text className="font-mono text-[10px] text-zinc-500">{formatBytes(file.size)}</Text>
+          <Text className="font-mono text-[10px] uppercase text-zinc-500 dark:text-zinc-400">{ext}</Text>
+          <Text className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">{formatBytes(file.size)}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -560,22 +561,22 @@ function FileRow({
 }) {
   return (
     <TouchableOpacity
-      className="flex-row items-center gap-3 border-b border-white/5 px-4 py-3 active:bg-white/5"
+      className="mb-2 flex-row items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:active:bg-zinc-900"
       onPress={isImage(file.name) ? onImagePress : undefined}
       onLongPress={onLongPress}
     >
-      <View className="h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
+      <View className="h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-900">
         <FileTypeEmoji name={file.name} />
       </View>
       <View className="flex-1 overflow-hidden">
-        <Text className="text-sm font-medium text-white" numberOfLines={1}>
+        <Text className="text-sm font-medium text-zinc-900 dark:text-white" numberOfLines={1}>
           {file.name}
         </Text>
-        <Text className="font-mono text-xs text-zinc-500" numberOfLines={1}>
+        <Text className="font-mono text-xs text-zinc-500 dark:text-zinc-400" numberOfLines={1}>
           {file.objectKey}
         </Text>
       </View>
-      <Text className="font-mono text-xs text-zinc-400">{formatBytes(file.size)}</Text>
+      <Text className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{formatBytes(file.size)}</Text>
     </TouchableOpacity>
   );
 }
@@ -585,23 +586,23 @@ function FileRow({
 function EmptyState({ query, onUpload }: { query: string; onUpload: () => void }) {
   return (
     <View className="flex-1 items-center justify-center px-8 py-20">
-      <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800">
+      <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900">
         <Text className="text-3xl">{query ? "🔍" : "📂"}</Text>
       </View>
-      <Text className="text-center text-base font-semibold text-white">
+      <Text className="text-center text-base font-semibold text-zinc-900 dark:text-white">
         {query ? "No files match your search" : "No files yet"}
       </Text>
-      <Text className="mt-1.5 text-center text-sm text-zinc-400">
+      <Text className="mt-1.5 text-center text-sm text-zinc-500 dark:text-zinc-400">
         {query
           ? "Try a different keyword or clear the search."
           : "Upload your first file to get started."}
       </Text>
       {!query && (
         <TouchableOpacity
-          className="mt-5 rounded-xl bg-indigo-600 px-6 py-3 active:opacity-80"
+          className="mt-5 rounded-xl bg-zinc-900 px-6 py-3 active:opacity-80 dark:bg-white"
           onPress={onUpload}
         >
-          <Text className="text-sm font-semibold text-white">Upload file</Text>
+          <Text className="text-sm font-semibold text-white dark:text-zinc-900">Upload file</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -616,19 +617,19 @@ function StorageBar({ storage }: { storage: StorageUsage }) {
   const pct = quota > 0 ? Math.min((used / quota) * 100, 100) : 0;
 
   return (
-    <View className="mx-4 mb-3 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3">
+    <View className="mb-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
       <View className="mb-2 flex-row items-center justify-between">
-        <Text className="text-xs font-medium text-zinc-400">Storage used</Text>
-        <Text className="font-mono text-xs text-zinc-300">
+        <Text className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Storage used</Text>
+        <Text className="font-mono text-xs text-zinc-600 dark:text-zinc-300">
           {formatBytes(used)} / {formatBytes(quota)}
         </Text>
       </View>
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-700">
+      <View className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
         <View
           className="h-full rounded-full"
           style={{
             width: `${pct}%`,
-            backgroundColor: pct > 85 ? "#ef4444" : pct > 60 ? "#f59e0b" : "#6366f1",
+            backgroundColor: pct > 85 ? "#ef4444" : pct > 60 ? "#f59e0b" : "#22c55e",
           }}
         />
       </View>
@@ -644,6 +645,7 @@ export interface StorageScreenProps {
 }
 
 export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
+  const { isDark } = useAppTheme();
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [storage, setStorage] = useState<StorageUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -735,50 +737,51 @@ export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
   const numCols = view === "grid" ? 2 : 1;
 
   return (
-    <View className="flex-1 bg-black">
-      <StatusBar barStyle="light-content" />
+    <View className="flex-1 bg-transparent">
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* ── header ── */}
-      <View className="border-b border-white/10 px-4 pb-4 pt-14">
+      <View className="mb-4 rounded-3xl border border-zinc-200 bg-white px-5 py-5 dark:border-zinc-800 dark:bg-zinc-950">
         <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-2xl font-bold tracking-tight text-white">Vault</Text>
-            <Text className="text-xs text-zinc-500">
+            <Text className="text-xs uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400">Storage</Text>
+            <Text className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Vault</Text>
+            <Text className="text-xs text-zinc-500 dark:text-zinc-400">
               {files.length} file{files.length !== 1 ? "s" : ""}
             </Text>
           </View>
           <TouchableOpacity
-            className="flex-row items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 active:opacity-80"
+            className="flex-row items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 active:opacity-80 dark:bg-white"
             onPress={handleUpload}
             disabled={!!uploadStage}
           >
             {uploadStage ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={isDark ? "#18181b" : "#ffffff"} />
             ) : (
-              <Text className="text-lg leading-none">⬆</Text>
+              <Text className="text-lg leading-none text-white dark:text-zinc-900">⬆</Text>
             )}
-            <Text className="text-sm font-semibold text-white">Upload</Text>
+            <Text className="text-sm font-semibold text-white dark:text-zinc-900">Upload</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ── storage bar ── */}
       {!isLoading && !error && storage && (
-        <View className="pt-3">
+        <View>
           <StorageBar storage={storage} />
         </View>
       )}
 
       {/* ── search + controls ── */}
-      <View className="flex-row items-center gap-2 px-4 py-3">
-        <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5">
-          <Text className="text-zinc-500">🔍</Text>
+      <View className="mb-2 flex-row items-center gap-2 pb-3">
+        <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950">
+          <Text className="text-zinc-500 dark:text-zinc-400">🔍</Text>
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search files…"
             placeholderTextColor="#52525b"
-            className="flex-1 text-sm text-white"
+            className="flex-1 text-sm text-zinc-900 dark:text-white"
             autoCapitalize="none"
             autoCorrect={false}
             clearButtonMode="while-editing"
@@ -787,23 +790,25 @@ export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
 
         {/* sort */}
         <TouchableOpacity
-          className="h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900"
+          className="h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
           onPress={() => setSort((s) => (s === "name" ? "size" : "name"))}
         >
           <Text className="text-sm">{sort === "name" ? "🔤" : "📏"}</Text>
         </TouchableOpacity>
 
         {/* view toggle */}
-        <View className="flex-row overflow-hidden rounded-xl border border-white/10">
+        <View className="flex-row overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           {(["grid", "list"] as const).map((v) => (
             <TouchableOpacity
               key={v}
               className={`h-10 w-10 items-center justify-center ${
-                view === v ? "bg-indigo-600" : "bg-zinc-900"
+                view === v ? "bg-zinc-900 dark:bg-white" : "bg-white dark:bg-zinc-950"
               }`}
               onPress={() => setView(v)}
             >
-              <Text className="text-sm">{v === "grid" ? "⊞" : "≡"}</Text>
+              <Text className={`text-sm ${view === v ? "text-white dark:text-zinc-900" : "text-zinc-500 dark:text-zinc-400"}`}>
+                {v === "grid" ? "⊞" : "≡"}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -813,21 +818,21 @@ export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
       {error ? (
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-4xl mb-3">⚠️</Text>
-          <Text className="text-center text-base font-semibold text-white">
+          <Text className="text-center text-base font-semibold text-zinc-900 dark:text-white">
             Couldn't load your files
           </Text>
-          <Text className="mt-1 text-center text-sm text-zinc-400">{error}</Text>
+          <Text className="mt-1 text-center text-sm text-zinc-500 dark:text-zinc-400">{error}</Text>
           <TouchableOpacity
-            className="mt-4 rounded-xl bg-zinc-800 px-5 py-2.5"
+            className="mt-4 rounded-xl bg-zinc-900 px-5 py-2.5 dark:bg-white"
             onPress={() => load()}
           >
-            <Text className="text-sm text-white font-medium">Retry</Text>
+            <Text className="text-sm font-medium text-white dark:text-zinc-900">Retry</Text>
           </TouchableOpacity>
         </View>
       ) : isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#6366f1" size="large" />
-          <Text className="mt-3 text-sm text-zinc-500">Loading files…</Text>
+          <ActivityIndicator color={isDark ? "#ffffff" : "#18181b"} size="large" />
+          <Text className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Loading files…</Text>
         </View>
       ) : visible.length === 0 ? (
         <EmptyState query={query} onUpload={handleUpload} />
@@ -842,7 +847,7 @@ export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load(true)}
-              tintColor="#6366f1"
+              tintColor={isDark ? "#ffffff" : "#18181b"}
             />
           }
           renderItem={({ item }) => (
@@ -865,11 +870,11 @@ export function StorageScreen({ token, baseUrl }: StorageScreenProps) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load(true)}
-              tintColor="#6366f1"
+              tintColor={isDark ? "#ffffff" : "#18181b"}
             />
           }
           ListHeaderComponent={
-            <View className="mx-4 mb-1 mt-1 overflow-hidden rounded-t-xl border border-white/10 bg-zinc-900">
+            <View className="mx-4 mb-1 mt-1 overflow-hidden rounded-t-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
               {/* rendered by FlatList items; header just provides container start */}
             </View>
           }

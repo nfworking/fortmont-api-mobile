@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowRight, BadgeCheck, ShieldCheck, Sparkles } from 'lucide-react-native';
+import { ArrowRight, Sparkles } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
@@ -149,21 +149,8 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View className={cn('flex-1', isDark ? 'bg-zinc-950' : 'bg-zinc-50')}>
-        <View
-          className={cn(
-            'absolute -top-24 left-[-72px] h-72 w-72 rounded-full opacity-70',
-            isDark ? 'bg-cyan-400/10' : 'bg-cyan-500/10'
-          )}
-        />
-        <View
-          className={cn(
-            'absolute bottom-0 right-[-64px] h-80 w-80 rounded-full opacity-80',
-            isDark ? 'bg-emerald-400/10' : 'bg-indigo-500/10'
-          )}
-        />
-
         <View className="absolute right-4 z-10" style={{ top: insets.top + 12 }}>
-          <ThemeToggle />
+    
         </View>
 
         <ScrollView
@@ -174,52 +161,42 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
           <View className="flex-1 justify-center py-16">
             <View
               className={cn(
-                'mx-auto w-full max-w-xl rounded-[28px] border px-6 py-8 shadow-2xl',
-                isDark ? 'border-white/10 bg-zinc-950/90' : 'border-zinc-200/80 bg-white/95'
+                'mx-auto w-full max-w-xl rounded-[30px] border px-6 py-8 shadow-2xl',
+                isDark ? 'border-white/10 bg-zinc-950/90' : 'border-zinc-200/90 bg-white/95'
               )}
             >
-              <View className="mb-8 gap-4">
-                <View className="flex-row items-center gap-3">
+              <View className="mb-8 gap-5">
+                <View className="items-center gap-3">
                   <View
                     className={cn(
-                      'h-12 w-12 items-center justify-center rounded-2xl',
+                      'h-12 w-12 items-center justify-center rounded-2xl border',
                       isDark ? 'bg-white/10' : 'bg-zinc-900'
                     )}
+                    style={{ borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.2)' }}
                   >
                     <Sparkles size={22} color="#ffffff" />
                   </View>
-                  <View>
-                    <Text className={cn('text-xs font-semibold uppercase tracking-[0.28em]', isDark ? 'text-zinc-500' : 'text-zinc-400')}>
-                      Fortmont access
+                  <View className="w-full items-center">
+                    <Text className={cn('text-center text-xs font-semibold uppercase tracking-[0.22em]', isDark ? 'text-zinc-500' : 'text-zinc-400')}>
+                      Fortmont mobile
                     </Text>
-                    <Text className={cn('mt-1 text-3xl font-semibold tracking-tight', isDark ? 'text-white' : 'text-zinc-950')}>
-                      Sign in with Fortmont
+                    <Text
+                      className={cn('mt-1 text-center text-[28px] font-semibold tracking-tight', isDark ? 'text-white' : 'text-zinc-950')}
+                      numberOfLines={2}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                    >
+                      Welcome to Fortmont Mobile
                     </Text>
                   </View>
                 </View>
 
-                <Text className={cn('max-w-lg text-base leading-6', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
-                  Continue with your Fortmont identity to open the mobile app. The login happens in the
-                  system browser and returns straight back to this screen.
+                <Text className={cn('max-w-lg text-center text-[15px] leading-6', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
+                 Continue with Fortmont Inc to access this app. You&apos;ll be redirected to Fortmont to complete authentication.
                 </Text>
               </View>
 
               <View className="gap-3">
-                <View className="flex-row flex-wrap gap-3">
-                  <View className={cn('flex-row items-center gap-2 rounded-full px-3 py-2', isDark ? 'bg-white/5' : 'bg-zinc-100')}>
-                    <ShieldCheck size={15} color={isDark ? '#a1a1aa' : '#52525b'} />
-                    <Text className={cn('text-sm', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
-                      PKCE protected
-                    </Text>
-                  </View>
-                  <View className={cn('flex-row items-center gap-2 rounded-full px-3 py-2', isDark ? 'bg-white/5' : 'bg-zinc-100')}>
-                    <BadgeCheck size={15} color={isDark ? '#a1a1aa' : '#52525b'} />
-                    <Text className={cn('text-sm', isDark ? 'text-zinc-400' : 'text-zinc-600')}>
-                      Secure callback flow
-                    </Text>
-                  </View>
-                </View>
-
                 {error ? <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text> : null}
 
                 <Pressable
@@ -236,7 +213,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
                       isLoading ? 'text-zinc-100 dark:text-zinc-200' : 'text-white dark:text-zinc-950'
                     )}
                   >
-                    {isLoading ? 'Opening Fortmont...' : 'Continue with Fortmont'}
+                    {isLoading ? 'Opening Fortmont...' : 'Continue with Fortmont IAM'}
                   </Text>
                   {!isLoading ? <ArrowRight size={18} color={isDark ? '#09090b' : '#ffffff'} /> : null}
                 </Pressable>

@@ -1,14 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View, useWindowDimensions, ImageBackground } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { useColorScheme } from 'nativewind';
-import { RealtimeVmCard, type RealtimeVm } from './RealtimeVmCard';
 
-type RealtimeApiResponse = {
-  data?: RealtimeVm[];
+const DEFAULT_FORTMONT_ISSUER = 'https://api.fortmont.me';
+
+type AppExtra = {
+  fortmontIssuer?: string;
 };
 
-const API_URL = 'https://api.fortmont.me/api/realtime';
-const API_URL_DEV = 'https://api.fortmont.me/api/realtime/prodapp';
+type ProxmoxNode = {
+  id: string;
+  node: string;
+  status: string;
+  mem: number;
+  maxmem: number;
+  cpu: number;
+  uptime: number;
+};
+
+type ProxmoxSummary = {
+  nodes?: ProxmoxNode[];
+  totalVMs?: number;
+  runningVMs?: number;
+  totalLXC?: number;
+  runningLXC?: number;
+  memUsedBytes?: number;
+  memTotalBytes?: number;
+};
+
+type ProxmoxSummaryResponse = {
+  data?: ProxmoxSummary;
+};
+
+type RealtimeDashboardProps = {
+  token: string;
+};
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes)) {
@@ -29,90 +56,130 @@ function formatBytes(bytes: number) {
   return `${value.toFixed(digits)} ${units[unitIndex]}`;
 }
 
-export function RealtimeDashboard() {
+function formatPercent(value: number) {
+  if (!Number.isFinite(value)) return '0%';
+  return `${Math.round(value)}%`;
+}
+
+function formatUptime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '0m';
+  }
+
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
+function usageFraction(used: number, total: number) {
+  if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(used / total, 1));
+}
+
+export function RealtimeDashboard({ token }: RealtimeDashboardProps) {
   const { colorScheme } = useColorScheme();
   const spinnerColor = colorScheme === 'dark' ? '#ffffff' : '#18181b';
-  const { width } = useWindowDimensions();
-  const isCompact = width < 768;
-  const isWide = width >= 960;
-  const [vms, setVms] = useState<RealtimeVm[]>([]);
+  const [summary, setSummary] = useState<ProxmoxSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
   const isMountedRef = useRef(true);
+  const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
+  const issuer = extra.fortmontIssuer?.trim() || DEFAULT_FORTMONT_ISSUER;
+  const endpoint = `${issuer}/api/proxmox/summary`;
 
-  const loadRealtimeData = useCallback(async (isBackgroundRefresh: boolean) => {
-    if (requestInFlightRef.current) {
-      return;
-    }
+  const nodes = summary?.nodes ?? [];
+  const onlineNodes = useMemo(
+    () => nodes.filter((node) => node.status?.toLowerCase() === 'online').length,
+    [nodes]
+  );
+  const totalGuests = (summary?.totalVMs ?? 0) + (summary?.totalLXC ?? 0);
+  const runningGuests = (summary?.runningVMs ?? 0) + (summary?.runningLXC ?? 0);
+  const totalMemRatio = usageFraction(summary?.memUsedBytes ?? 0, summary?.memTotalBytes ?? 0);
 
-    requestInFlightRef.current = true;
-
-    if (isBackgroundRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    try {
-      const response = await fetch(API_URL, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+  const loadSummary = useCallback(
+    async (isBackgroundRefresh: boolean) => {
+      if (requestInFlightRef.current) {
+        return;
       }
 
-      const payload = (await response.json()) as RealtimeApiResponse;
-      const nextVms = Array.isArray(payload.data)
-        ? [...payload.data].sort((left, right) => left.vmid - right.vmid)
-        : [];
+      requestInFlightRef.current = true;
 
-      if (isMountedRef.current) {
-        setVms(nextVms);
-        setError(null);
-      }
-    } catch (requestError) {
-      if (isMountedRef.current) {
-        const message = requestError instanceof Error ? requestError.message : 'Unable to load realtime data';
-        setError(message);
-        setVms([]);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
+      if (isBackgroundRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
       }
 
-      requestInFlightRef.current = false;
-    }
-  }, []);
+      try {
+        const response = await fetch(endpoint, {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const payload = (await response.json()) as ProxmoxSummaryResponse;
+        const nextSummary = payload.data ?? null;
+
+        if (isMountedRef.current) {
+          setSummary(nextSummary);
+          setError(null);
+        }
+      } catch (requestError) {
+        if (isMountedRef.current) {
+          const message =
+            requestError instanceof Error ? requestError.message : 'Unable to load summary data';
+          setError(message);
+          setSummary(null);
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
+
+        requestInFlightRef.current = false;
+      }
+    },
+    [endpoint, token]
+  );
 
   useEffect(() => {
-    void loadRealtimeData(false);
+    void loadSummary(false);
 
     const refreshTimer = setInterval(() => {
-      void loadRealtimeData(true);
-    }, 15000);
+      void loadSummary(true);
+    }, 30000);
 
     return () => {
       isMountedRef.current = false;
       clearInterval(refreshTimer);
     };
-  }, [loadRealtimeData]);
+  }, [loadSummary]);
 
   return (
-    
     <View className="flex-1">
       <ScrollView
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => {
-              void loadRealtimeData(true);
+              void loadSummary(true);
             }}
             tintColor={spinnerColor}
             colors={[spinnerColor]}
@@ -121,56 +188,148 @@ export function RealtimeDashboard() {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-4 overflow-hidden rounded-3xl border border-emerald-200 px-5 py-5 dark:border-emerald-900/30 dark:bg-zinc-950">
-          <View className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-500/10" />
-          <View className="absolute -bottom-10 -left-8 h-24 w-24 rounded-full bg-cyan-500/10" />
-
-          <Text className="text-xs uppercase tracking-[0.4em] text-emerald-700 dark:text-emerald-300/80">Realtime monitor</Text>
-          <Text className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">Live LXC status</Text>
-          <Text className="mt-3 max-w-2xl text-sm leading-5 text-zinc-500 dark:text-zinc-400">
-           Welcome to your dashboard!
+        <View className="mb-4 rounded-3xl border border-zinc-200 bg-white px-5 py-5 dark:border-zinc-800 dark:bg-zinc-950">
+          <Text className="text-xs uppercase tracking-[0.32em] text-zinc-400 dark:text-zinc-500">
+            Infrastructure
           </Text>
+          <Text className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            Welcome back
+          </Text>
+          <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            Live summary of your Proxmox cluster.
+          </Text>
+        </View>
 
-          <View className="mt-4 self-start rounded-full border border-zinc-200 bg-zinc-100 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
-            <Text className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{vms.length} machines</Text>
+        <View className="mb-4 flex-row gap-3">
+          <View className="flex-1 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+            <Text className="text-xs uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
+              Nodes
+            </Text>
+            <Text className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-white">
+              {onlineNodes}/{nodes.length || 0}
+            </Text>
+            <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Online</Text>
+          </View>
+
+          <View className="flex-1 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+            <Text className="text-xs uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
+              Guests
+            </Text>
+            <Text className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-white">
+              {runningGuests}/{totalGuests}
+            </Text>
+            <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Running</Text>
+          </View>
+
+          <View className="flex-1 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+            <Text className="text-xs uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
+              Memory
+            </Text>
+            <Text className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-white">
+              {formatPercent(totalMemRatio * 100)}
+            </Text>
+            <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Cluster used</Text>
           </View>
         </View>
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center rounded-3xl border border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-950">
             <ActivityIndicator color={spinnerColor} />
-            <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">Loading realtime data…</Text>
+            <Text className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Loading cluster summary...
+            </Text>
           </View>
         ) : error ? (
           <View className="rounded-3xl border border-rose-300 bg-rose-50 px-5 py-5 dark:border-rose-900/60 dark:bg-rose-950/40">
-            <Text className="text-base font-semibold text-rose-800 dark:text-rose-100">Could not load realtime data</Text>
-            <Text className="mt-2 text-sm leading-5 text-rose-700 dark:text-rose-200/80">{error}</Text>
+            <Text className="text-base font-semibold text-rose-800 dark:text-rose-100">
+              Could not load cluster summary
+            </Text>
+            <Text className="mt-2 text-sm leading-5 text-rose-700 dark:text-rose-200/80">
+              {error}
+            </Text>
           </View>
-        ) : vms.length === 0 ? (
+        ) : nodes.length === 0 ? (
           <View className="rounded-3xl border border-zinc-200 bg-white px-5 py-5 dark:border-zinc-800 dark:bg-zinc-950">
-            <Text className="text-base font-semibold text-zinc-900 dark:text-white">No VMs returned</Text>
-            <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">The API responded successfully, but it did not return any data.</Text>
+            <Text className="text-base font-semibold text-zinc-900 dark:text-white">No nodes returned</Text>
+            <Text className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              The summary API returned no node data.
+            </Text>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            {vms.map((vm, index) => (
-              <View
-                key={`${vm.vmid}-${vm.name}`}
-                style={{ width: isWide ? '48.5%' : '100%', marginBottom: 12 }}
-              >
-                <RealtimeVmCard vm={vm} index={index} formatBytes={formatBytes} />
-              </View>
-            ))}
+          <View className="gap-3">
+            {nodes.map((node) => {
+              const memoryRatio = usageFraction(node.mem, node.maxmem);
+              const cpuPct = Math.max(0, node.cpu || 0) * 100;
+              const isOnline = node.status?.toLowerCase() === 'online';
+
+              return (
+                <View
+                  key={node.id}
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950"
+                >
+                  <View className="flex-row items-center justify-between gap-3">
+                    <View className="flex-1">
+                      <Text className="text-lg font-semibold text-zinc-900 dark:text-white">{node.node}</Text>
+                      <Text className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        Uptime {formatUptime(node.uptime)}
+                      </Text>
+                    </View>
+
+                    <View
+                      className={
+                        isOnline
+                          ? 'rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 dark:border-emerald-700/60 dark:bg-emerald-900/20'
+                          : 'rounded-full border border-rose-300 bg-rose-50 px-3 py-1 dark:border-rose-700/60 dark:bg-rose-900/20'
+                      }
+                    >
+                      <Text
+                        className={
+                          isOnline
+                            ? 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300'
+                            : 'text-xs font-semibold uppercase tracking-[0.2em] text-rose-700 dark:text-rose-300'
+                        }
+                      >
+                        {node.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-4">
+                    <View className="mb-1.5 flex-row items-center justify-between">
+                      <Text className="text-xs uppercase tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
+                        Memory
+                      </Text>
+                      <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                        {formatBytes(node.mem)} / {formatBytes(node.maxmem)}
+                      </Text>
+                    </View>
+
+                    <View className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                      <View
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${Math.max(2, memoryRatio * 100)}%` }}
+                      />
+                    </View>
+
+                    <View className="mt-2 flex-row items-center justify-between">
+                      <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {formatPercent(memoryRatio * 100)} used
+                      </Text>
+                      <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                        CPU {formatPercent(cpuPct)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
 
-        {!isCompact && (
-          <Text className="mt-4 text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
-            Auto refreshes every 15 seconds
-          </Text>
-        )}
+        <Text className="mt-4 text-xs uppercase tracking-[0.3em] text-zinc-400 dark:text-zinc-500">
+          Auto refreshes every 30 seconds
+        </Text>
       </ScrollView>
     </View>
-  
   );
 }

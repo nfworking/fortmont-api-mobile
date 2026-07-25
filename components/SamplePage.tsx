@@ -1,482 +1,387 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import Constants from 'expo-constants';
 import Animated, {
   Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import {
-  ChevronDown,
+  Bell,
+  ChevronLeft,
+  CircleHelp,
   Database,
-  LayoutDashboard,
+  House,
   LogOut,
   ServerCog,
   Settings,
+  Shield,
+  User,
   Users,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from '@react-native-community/blur';
-import { StyleSheet } from 'react-native';
 import type { AuthResponse } from './LoginScreen';
 import { ProfilePage } from './ProfilePage';
 import { RealtimeDashboard } from './RealtimeDashboard';
-import { UsersPage } from './UsersPage';
-import { ThemeToggle } from './ThemeToggle';
 import { useAppTheme } from '../lib/useAppTheme';
+import { ThemeToggle } from './ThemeToggle';
+import { UsersPage } from './UsersPage';
 import { TicketDashboard } from './TicketDash';
-import { ImageBackground } from 'react-native';
 import { StorageScreen } from './StorageScreen';
-
 
 type SamplePageProps = {
   auth: AuthResponse;
   onLogout: () => void;
 };
 
-type SectionKey = 'dashboard' | 'profile' | 'users' | 'tickets' | 'storage';
+type AppExtra = {
+  fortmontIssuer?: string;
+};
 
-// ─── Floating tab item ────────────────────────────────────────────────────────
+const DEFAULT_FORTMONT_ISSUER = 'https://api.fortmont.me';
 
-function TabItem({
+type RootPageKey = 'dashboard' | 'users' | 'tickets' | 'storage' | 'settings';
+
+type SettingsRowProps = {
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  onPress?: () => void;
+  danger?: boolean;
+};
+
+const ROOT_PAGES: RootPageKey[] = ['dashboard', 'users', 'tickets', 'storage', 'settings'];
+
+function SettingsRow({ label, description, icon, onPress, danger }: SettingsRowProps) {
+  const { isDark } = useAppTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      className={
+        danger
+          ? 'mb-3 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3.5 dark:border-rose-900/50 dark:bg-rose-950/20'
+          : 'mb-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 dark:border-zinc-800 dark:bg-zinc-950'
+      }
+    >
+      <View className="flex-row items-center gap-3">
+        <View
+          className={
+            danger
+              ? 'h-10 w-10 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30'
+              : 'h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-900'
+          }
+        >
+          {icon}
+        </View>
+
+        <View className="flex-1">
+          <Text
+            className={
+              danger
+                ? 'text-base font-semibold text-rose-700 dark:text-rose-300'
+                : 'text-base font-semibold text-zinc-900 dark:text-white'
+            }
+          >
+            {label}
+          </Text>
+          <Text className={danger ? 'mt-0.5 text-xs text-rose-500' : 'mt-0.5 text-xs text-zinc-500 dark:text-zinc-400'}>
+            {description}
+          </Text>
+        </View>
+
+        {onPress ? (
+          <ChevronLeft
+            size={16}
+            color={danger ? (isDark ? '#fda4af' : '#e11d48') : isDark ? '#a1a1aa' : '#71717a'}
+            style={{ transform: [{ rotate: '180deg' }] }}
+          />
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+function RootTab({
   label,
-  icon,
   active,
+  icon,
   onPress,
-  isDark,
 }: {
   label: string;
-  icon: (color: string, size: number) => React.ReactNode;
-  active?: boolean;
+  active: boolean;
+  icon: React.ReactNode;
   onPress: () => void;
-  isDark: boolean;
 }) {
-  const scale = useSharedValue(1);
   const progress = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
     progress.value = withTiming(active ? 1 : 0, {
-  duration: 220,
-  easing: Easing.out(Easing.cubic),
-});
-  }, [active]);
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [active, progress]);
 
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  // Active pill expands to show label; inactive collapses to icon only
-  const pillStyle = useAnimatedStyle(() => ({
-    backgroundColor: isDark
-      ? `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.18])})`
-      : `rgba(0,0,0,${interpolate(progress.value, [0, 1], [0, 0.08])})`,
-    paddingHorizontal: interpolate(progress.value, [0, 1], [10, 16]),
-    borderWidth: interpolate(progress.value, [0, 1], [0, 0.8]),
-    borderColor: isDark
-      ? `rgba(255,255,255,${interpolate(progress.value, [0, 1], [0, 0.25])})`
-      : `rgba(0,0,0,${interpolate(progress.value, [0, 1], [0, 0.12])})`,
+  const tabStyle = useAnimatedStyle(() => ({
+    width: interpolate(progress.value, [0, 1], [44, 118]),
+    paddingHorizontal: interpolate(progress.value, [0, 1], [0, 12]),
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    maxWidth: interpolate(progress.value, [0, 1], [0, 72]),
-    marginLeft: interpolate(progress.value, [0, 1], [0, 6]),
+    maxWidth: interpolate(progress.value, [0, 1], [0, 62]),
+    marginLeft: interpolate(progress.value, [0, 1], [0, 8]),
   }));
 
-  const iconColor = active
-    ? isDark
-      ? '#ffffff'
-      : '#18181b'
-    : isDark
-      ? 'rgba(255,255,255,0.55)'
-      : 'rgba(0,0,0,0.45)';
-  const labelColor = isDark ? '#ffffff' : '#18181b';
-
   return (
-    <Animated.View style={pressStyle}>
+    <Animated.View style={tabStyle}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => {
-scale.value = withTiming(0.87, { duration: 80, easing: Easing.out(Easing.quad) });
-        }}
-        onPressOut={() => {
-scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.cubic) });
-        }}
+        className={
+          active
+            ? 'h-10 w-full flex-row items-center justify-center rounded-full bg-zinc-900 dark:bg-white'
+            : 'h-10 w-full flex-row items-center justify-center rounded-full'
+        }
       >
-        <Animated.View
-          style={pillStyle}
-          className="flex-row items-center rounded-full py-2.5"
+        {icon}
+        <Animated.Text
+          numberOfLines={1}
+          style={labelStyle}
+          className={
+            active
+              ? 'text-xs font-semibold text-white dark:text-zinc-950'
+              : 'text-xs font-semibold text-zinc-500 dark:text-zinc-400'
+          }
         >
-          {icon(iconColor, 20)}
-          <Animated.Text
-            style={[labelStyle, { color: labelColor, fontSize: 13, fontWeight: '600', overflow: 'hidden' }]}
-            numberOfLines={1}
-          >
-            {label}
-          </Animated.Text>
-        </Animated.View>
+          {label}
+        </Animated.Text>
       </Pressable>
     </Animated.View>
   );
 }
 
-// ─── Profile dropdown ─────────────────────────────────────────────────────────
+export function SamplePage({ auth, onLogout }: SamplePageProps) {
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { isDark, colors } = useAppTheme();
+  const pagerRef = useRef<ScrollView>(null);
 
-function ProfileDropdown({
-  name,
-  email,
-  onOpenProfile,
-  onLogout,
-  colors,
-  blurType,
-}: {
-  name: string;
-  email: string;
-  onOpenProfile: () => void;
-  onLogout: () => void;
-  colors: ReturnType<typeof useAppTheme>['colors'];
-  blurType: 'dark' | 'light';
-}) {
-  return (
-    <View
-      style={{
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 0.8,
-        borderColor: colors.borderStrong,
-      }}
-    >
-      <BlurView
-        blurType={blurType}
-        blurAmount={40}
-        style={StyleSheet.absoluteFillObject}
-      />
+  const [rootPage, setRootPage] = useState<RootPageKey>('dashboard');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-      <View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: colors.glassTint },
-        ]}
-      />
+  const profileProgress = useSharedValue(0);
 
-      <View>
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderBottomWidth: 0.5,
-            borderBottomColor: colors.border,
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{name}</Text>
-          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{email}</Text>
-        </View>
-
-        <Pressable
-          onPress={onOpenProfile}
-          android_ripple={{ color: colors.pillBg }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-        >
-          <View
-            style={{
-              height: 32,
-              width: 32,
-              borderRadius: 16,
-              backgroundColor: colors.pillBg,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Settings size={14} color={colors.textMuted} />
-          </View>
-          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: colors.text }}>
-            Profile settings
-          </Text>
-        </Pressable>
-
-        <View style={{ height: 0.5, backgroundColor: colors.border }} />
-
-        <Pressable
-          onPress={onLogout}
-          android_ripple={{ color: colors.pillBg }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-        >
-          <View
-            style={{
-              height: 32,
-              width: 32,
-              borderRadius: 16,
-              backgroundColor: 'rgba(239,68,68,0.15)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <LogOut size={14} color="#f87171" />
-          </View>
-          <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '600', color: '#f87171' }}>
-            Log out
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function ProfileMenuButton({
-  name,
-  email,
-  avatarUrl,
-  initial,
-  isOpen,
-  onToggle,
-  onOpenProfile,
-  onLogout,
-  colors,
-  blurType,
-}: {
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-  initial: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onOpenProfile: () => void;
-  onLogout: () => void;
-  colors: ReturnType<typeof useAppTheme>['colors'];
-  blurType: 'dark' | 'light';
-}) {
-  const pressScale = useSharedValue(1);
-  const menuProgress = useSharedValue(0);
+  const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
+  const issuer = extra.fortmontIssuer?.trim() || DEFAULT_FORTMONT_ISSUER;
 
   useEffect(() => {
-    menuProgress.value = withTiming(isOpen ? 1 : 0, {
-      duration: 180,
+    profileProgress.value = withTiming(isProfileOpen ? 1 : 0, {
+      duration: 260,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isOpen]);
+  }, [isProfileOpen, profileProgress]);
 
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
+  const profileStyle = useAnimatedStyle(() => ({
+    opacity: profileProgress.value,
+    transform: [{ translateX: interpolate(profileProgress.value, [0, 1], [width, 0]) }],
   }));
 
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateZ: `${interpolate(menuProgress.value, [0, 1], [0, 180])}deg` }],
-  }));
+  const iconColor = isDark ? '#d4d4d8' : '#3f3f46';
+  const activeIconColor = isDark ? '#09090b' : '#ffffff';
 
-  const menuStyle = useAnimatedStyle(() => ({
-    opacity: menuProgress.value,
-    transform: [
-      { translateY: interpolate(menuProgress.value, [0, 1], [-10, 0]) },
-      { scale: interpolate(menuProgress.value, [0, 1], [0.96, 1]) },
-    ],
-  }));
+  const pageIndex = ROOT_PAGES.indexOf(rootPage);
 
-  return (
-    <View style={{ position: 'relative' }}>
-      <Animated.View style={buttonStyle}>
-        <Pressable
-          onPress={onToggle}
-          onPressIn={() => { pressScale.value = withSpring(0.93, { damping: 15, stiffness: 300 }); }}
-          onPressOut={() => { pressScale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingLeft: 4,
-            paddingRight: 10,
-            paddingVertical: 4,
-            borderRadius: 999,
-            borderWidth: 0.8,
-            borderColor: colors.borderStrong,
-            backgroundColor: colors.pillBg,
-          }}
-        >
-          <View style={{ height: 32, width: 32, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.pillBg }}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={{ height: 32, width: 32, borderRadius: 16 }} resizeMode="cover" />
-            ) : (
-              <View style={{ height: 32, width: 32, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>{initial}</Text>
-              </View>
-            )}
-          </View>
-          <Animated.View style={chevronStyle}>
-            <ChevronDown size={13} color={colors.textSecondary} />
-          </Animated.View>
-        </Pressable>
-      </Animated.View>
+  const goToRootPage = (nextPage: RootPageKey) => {
+    const nextIndex = ROOT_PAGES.indexOf(nextPage);
+    if (nextIndex < 0) return;
 
-      {isOpen && (
-        <Animated.View style={[menuStyle, { position: 'absolute', right: 0, top: 48, zIndex: 50, width: 240 }]}>
-          <ProfileDropdown
-            name={name}
-            email={email}
-            onOpenProfile={onOpenProfile}
-            onLogout={onLogout}
-            colors={colors}
-            blurType={blurType}
-          />
-        </Animated.View>
-      )}
-    </View>
-  );
-}
+    setRootPage(nextPage);
+    pagerRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+  };
 
-// ─── Nav items config ─────────────────────────────────────────────────────────
+  const onPagerMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    const nextPage = ROOT_PAGES[nextIndex] ?? 'dashboard';
+    setRootPage(nextPage);
+  };
 
-const NAV_ITEMS: {
-  key: SectionKey;
-  label: string;
-  icon: (color: string, size: number) => React.ReactNode;
-}[] = [
-  { key: 'dashboard', label: 'Home',     icon: (c, s) => <LayoutDashboard size={s} color={c} /> },
-  { key: 'users',     label: 'Users',    icon: (c, s) => <Users           size={s} color={c} /> },
-  { key: 'tickets',   label: 'Tickets',  icon: (c, s) => <ServerCog       size={s} color={c} /> },
-  { key: 'storage',   label: 'Storage', icon: (c, s) => <Database        size={s} color={c} /> },
-];
+  useEffect(() => {
+    if (pageIndex < 0) return;
+    pagerRef.current?.scrollTo({ x: pageIndex * width, animated: false });
+  }, [pageIndex, width]);
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-export function SamplePage({ auth, onLogout }: SamplePageProps) {
-  const [section, setSection] = useState<SectionKey>('dashboard');
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const insets = useSafeAreaInsets();
-  const { isDark, colors } = useAppTheme();
-  const profileInitial = auth.user.displayName.slice(0, 1).toUpperCase();
-
-  const NAVBAR_HEIGHT = 64;
-  const NAVBAR_BOTTOM = insets.bottom + 16;
-
-  const content = useMemo(() => {
-    if (section === 'profile') return <ProfilePage profile={auth.user} token={auth.token} />;
-    if (section === 'tickets') return <TicketDashboard auth={auth} />;
-    if (section === 'users') return <UsersPage auth={auth} />;
-    if (section === 'storage') return <StorageScreen token={auth.token} baseUrl='https://api.fortmont.me' />;
-    return <RealtimeDashboard />;
-  }, [section, auth.user, auth.token, colors]);
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingTop: insets.top + 10,
-          paddingBottom: 10,
-          paddingHorizontal: 16,
-          borderBottomWidth: 0.5,
-          borderBottomColor: colors.border,
-          backgroundColor: colors.headerBg,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Fortmont API</Text>
-          <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Admin dashboard</Text>
+  const settingsScreen = useMemo(
+    () => (
+      <View className="flex-1 pt-1">
+        <View className="mb-4 px-4">
+          <Text className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">Settings</Text>
+          <Text className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Account and app preferences</Text>
         </View>
-        <ThemeToggle className="mr-2" />
-        <ProfileMenuButton
-          name={auth.user.displayName}
-          email={auth.user.email}
-          avatarUrl={auth.user.avatarUrl}
-          initial={profileInitial}
-          isOpen={isProfileMenuOpen}
-          onToggle={() => setIsProfileMenuOpen((v) => !v)}
-          onOpenProfile={() => { setSection('profile'); setIsProfileMenuOpen(false); }}
-          onLogout={onLogout}
-          colors={colors}
-          blurType={colors.blurType}
-        />
-      </View>
 
-      {/* Content */}
-      {section === 'dashboard' ? (
-        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: NAVBAR_HEIGHT + NAVBAR_BOTTOM + 16 }}>
-          {content}
-        </View>
-      ) : (
         <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: 16,
-            paddingTop: 16,
-            paddingBottom: NAVBAR_HEIGHT + NAVBAR_BOTTOM + 16,
-          }}
+          className="flex-1 px-4"
+          contentContainerStyle={{ paddingBottom: 26 }}
           showsVerticalScrollIndicator={false}
         >
-          {content}
-        </ScrollView>
-      )}
+          <View className="mb-4 rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <ThemeToggle variant="segmented" />
+          </View>
 
-      {/* ── Floating liquid-glass navbar ── */}
+          <View className="rounded-3xl border border-zinc-200 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/35">
+            <SettingsRow
+              label="Account"
+              description="Open your profile settings"
+              icon={<User size={18} color={iconColor} />}
+              onPress={() => setIsProfileOpen(true)}
+            />
+
+            <SettingsRow
+              label="Notifications"
+              description="Placeholder for push and alert preferences"
+              icon={<Bell size={18} color={iconColor} />}
+            />
+
+            <SettingsRow
+              label="Security"
+              description="Placeholder for session and access controls"
+              icon={<Shield size={18} color={iconColor} />}
+            />
+
+            <SettingsRow
+              label="About"
+              description="Placeholder for app info and support"
+              icon={<CircleHelp size={18} color={iconColor} />}
+            />
+          </View>
+
+          <View className="mt-5">
+            <SettingsRow
+              label="Log out"
+              description="End your current session"
+              icon={<LogOut size={18} color={isDark ? '#fda4af' : '#e11d48'} />}
+              onPress={onLogout}
+              danger
+            />
+          </View>
+        </ScrollView>
+      </View>
+    ),
+    [iconColor, isDark, onLogout]
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 8 }}>
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        onMomentumScrollEnd={onPagerMomentumEnd}
+        showsHorizontalScrollIndicator={false}
+        directionalLockEnabled
+        scrollEnabled={!isProfileOpen}
+        bounces={false}
+      >
+        <View style={{ width, paddingHorizontal: 16, paddingBottom: insets.bottom + 86 }}>
+          <RealtimeDashboard token={auth.token} />
+        </View>
+
+        <View style={{ width, paddingHorizontal: 16, paddingBottom: insets.bottom + 86 }}>
+          <UsersPage auth={auth} />
+        </View>
+
+        <View style={{ width, paddingHorizontal: 16, paddingBottom: insets.bottom + 86 }}>
+          <TicketDashboard auth={auth} />
+        </View>
+
+        <View style={{ width, paddingHorizontal: 16, paddingBottom: insets.bottom + 86 }}>
+          <StorageScreen token={auth.token} baseUrl={issuer} />
+        </View>
+
+        <View style={{ width, paddingBottom: insets.bottom + 86 }}>
+          {settingsScreen}
+        </View>
+      </ScrollView>
+
       <View
         style={{
           position: 'absolute',
-          bottom: NAVBAR_BOTTOM,
-          left: 24,
-          right: 24,
-          height: NAVBAR_HEIGHT,
+          left: 12,
+          right: 12,
+          bottom: insets.bottom + 10,
           borderRadius: 999,
-          overflow: 'hidden',
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: isDark ? 0.55 : 0.2,
-          shadowRadius: 20,
-          elevation: 18,
         }}
+        className="border border-zinc-200 bg-white p-1.5 dark:border-zinc-800 dark:bg-zinc-950"
       >
-        <BlurView
-          blurType={colors.blurType}
-          blurAmount={5}
-          style={{ position: 'absolute', inset: 0 }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: colors.glassBg,
-            borderRadius: 999,
-            borderWidth: 0.8,
-            borderColor: colors.glassBorder,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: '15%',
-            right: '15%',
-            height: 1,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.8)',
-            borderRadius: 999,
-          }}
-        />
-
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', paddingHorizontal: 8 }}>
-          {NAV_ITEMS.map((item) => (
-            <TabItem
-              key={item.key}
-              label={item.label}
-              icon={item.icon}
-              active={section === item.key}
-              isDark={isDark}
-              onPress={() => {
-                setSection(item.key);
-                setIsProfileMenuOpen(false);
-              }}
-            />
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}>
+          <RootTab
+            label="Home"
+            active={rootPage === 'dashboard'}
+            icon={<House size={15} color={rootPage === 'dashboard' ? activeIconColor : iconColor} />}
+            onPress={() => goToRootPage('dashboard')}
+          />
+          <RootTab
+            label="Users"
+            active={rootPage === 'users'}
+            icon={<Users size={15} color={rootPage === 'users' ? activeIconColor : iconColor} />}
+            onPress={() => goToRootPage('users')}
+          />
+          <RootTab
+            label="Tickets"
+            active={rootPage === 'tickets'}
+            icon={<ServerCog size={15} color={rootPage === 'tickets' ? activeIconColor : iconColor} />}
+            onPress={() => goToRootPage('tickets')}
+          />
+          <RootTab
+            label="Storage"
+            active={rootPage === 'storage'}
+            icon={<Database size={15} color={rootPage === 'storage' ? activeIconColor : iconColor} />}
+            onPress={() => goToRootPage('storage')}
+          />
+          <RootTab
+            label="Settings"
+            active={rootPage === 'settings'}
+            icon={<Settings size={15} color={rootPage === 'settings' ? activeIconColor : iconColor} />}
+            onPress={() => goToRootPage('settings')}
+          />
+        </ScrollView>
       </View>
 
-      {/* Dismiss profile menu */}
-      {isProfileMenuOpen && (
-        <Pressable
-          style={{ position: 'absolute', inset: 0, zIndex: 40 }}
-          onPress={() => setIsProfileMenuOpen(false)}
-        />
-      )}
+      <Animated.View
+        pointerEvents={isProfileOpen ? 'auto' : 'none'}
+        style={[
+          {
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: colors.background,
+            paddingTop: insets.top + 8,
+          },
+          profileStyle,
+        ]}
+      >
+        <View className="mb-2 px-4">
+          <Pressable
+            onPress={() => setIsProfileOpen(false)}
+            className="h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <ChevronLeft size={18} color={iconColor} />
+          </Pressable>
+        </View>
+
+        <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+          <ProfilePage profile={auth.user} token={auth.token} />
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }
